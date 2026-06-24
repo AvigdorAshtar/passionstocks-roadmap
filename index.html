@@ -89,6 +89,20 @@ input,select,textarea,button{font-family:inherit}
 .ver-set-btn{font-size:11px;padding:2px 8px;border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;background:none;cursor:pointer;color:#888}
 .ver-add-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;border:0.5px dashed rgba(0,0,0,0.2);border-radius:8px;background:none;cursor:pointer;color:#888;font-size:13px;width:100%;margin-top:8px}
 .color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;margin-right:4px}
+.next-ver-badge{font-size:11px;background:#f5f5f3;border:0.5px solid rgba(0,0,0,0.15);border-radius:20px;padding:3px 10px;color:#534AB7;cursor:pointer;font-weight:500;font-family:inherit}
+.next-ver-badge:hover{background:#EEEDFE;border-color:#534AB7}
+.ver-next-badge{font-size:10px;background:#EEEDFE;color:#534AB7;padding:2px 7px;border-radius:10px}
+.progress-bar-wrap{background:#f0f0ee;border-radius:8px;height:6px;margin:6px 0 1.25rem}
+.progress-bar-fill{height:6px;border-radius:8px;background:#3B6D11;transition:width .3s}
+.feed-group-title{font-size:16px;font-weight:500;margin:1.25rem 0 0.75rem;padding-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,0.12)}
+.feed-role-title{font-size:12px;font-weight:500;color:#888;margin:1rem 0 4px;display:flex;align-items:center;gap:6px}
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:0.5px solid rgba(0,0,0,0.06);cursor:pointer;border-radius:4px}
+.feed-item:hover{background:#f9f9f8}
+.feed-check{width:16px;height:16px;border-radius:4px;border:1.5px solid #ccc;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.feed-check.done{background:#EAF3DE;border-color:#3B6D11;color:#3B6D11}
+.nv-group-hdr{display:flex;align-items:center;gap:6px;padding:9px 4px;cursor:pointer;border-bottom:0.5px solid rgba(0,0,0,0.07);user-select:none}
+.nv-group-hdr:hover{background:#f9f9f8;border-radius:4px}
+.nv-top-lbl{font-size:10px;font-weight:600;color:#bbb;letter-spacing:.07em;text-transform:uppercase;padding:14px 0 6px;margin-top:2px;border-top:0.5px solid rgba(0,0,0,0.08)}
 </style>
 </head>
 <body>
@@ -101,6 +115,10 @@ input,select,textarea,button{font-family:inherit}
       <input type="password" id="pw-input" placeholder="Enter password" />
       <button class="pw-toggle" onclick="togglePw()">show</button>
     </div>
+    <div class="form-check" style="margin-bottom:10px;font-size:13px;color:#555">
+      <input type="checkbox" id="remember-check" checked style="margin-right:6px" />
+      <label for="remember-check">Remember this device</label>
+    </div>
     <button class="gate-btn" onclick="tryLogin()">Enter</button>
     <div class="gate-err" id="gate-err">Incorrect password</div>
   </div>
@@ -111,6 +129,7 @@ input,select,textarea,button{font-family:inherit}
     <span class="topbar-logo">PassionStocks</span>
     <span class="topbar-badge" id="upd-badge">syncing...</span>
     <input class="search-box" id="search-inp" placeholder="Search items..." oninput="doSearch(this.value)" />
+    <button class="next-ver-badge" id="next-ver-btn" onclick="openNextVerFeed()" style="display:none"></button>
     <div class="topbar-right">
       <button class="tb-btn" onclick="expandAll()">expand all</button>
       <button class="tb-btn" onclick="collapseAll()">collapse all</button>
@@ -135,6 +154,7 @@ input,select,textarea,button{font-family:inherit}
     </div>
     <div class="form-row"><label>Assignee</label><input id="f-assignee" type="text" placeholder="Name or initials" /></div>
     <div class="form-row"><label>Target date</label><input id="f-date" type="date" /></div>
+    <div class="form-row"><label>Target version</label><select id="f-targetver"></select></div>
     <div class="form-row"><label class="form-check"><input type="checkbox" id="f-roadmap" /> <span>Flag as roadmap / planned</span></label></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal()">Cancel</button>
@@ -154,6 +174,18 @@ input,select,textarea,button{font-family:inherit}
   </div>
 </div>
 
+
+<div class="modal-overlay" id="rn-modal-overlay">
+  <div class="modal" style="width:600px">
+    <h2 id="rn-modal-title">Release Notes</h2>
+    <textarea id="rn-output" style="width:100%;min-height:320px;font-family:monospace;font-size:12px;padding:10px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;background:#f5f5f3;resize:vertical;line-height:1.6"></textarea>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeRnModal()">Close</button>
+      <button class="btn-primary" onclick="copyReleaseNotes()">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -162,6 +194,9 @@ let authed = false;
 let items = [];
 let versions = [];
 let activeVerId = null;
+let nextVerId = null;
+let nvGroupOpen = {};
+let nvSearchQuery = '';
 let openNodes = {};
 let selectedNode = null;
 let editingId = null;
@@ -176,15 +211,89 @@ const ROLE_COLORS = {
 const TREE = [
   {id:'product',label:'Product',children:[
     {id:'buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
-      {id:'buyer-signup',label:'Sign up / Log in',leaf:true,colType:'standard'},
+      {id:'buyer-signup',label:'Sign up / Log in',children:[
+        {id:'buyer-auth-email',label:'Email verification',leaf:true,colType:'standard'},
+        {id:'buyer-auth-otp',label:'OTP challenge',leaf:true,colType:'standard'},
+        {id:'buyer-auth-invite',label:'Invitation code',leaf:true,colType:'standard'},
+        {id:'buyer-auth-birthdate',label:'Birthdate',leaf:true,colType:'standard'},
+        {id:'buyer-auth-username',label:'Username',leaf:true,colType:'standard'},
+        {id:'buyer-auth-ig',label:'Instagram data confirmation',leaf:true,colType:'standard'},
+        {id:'buyer-auth-forgot',label:'Forgot password',leaf:true,colType:'standard'},
+        {id:'buyer-auth-oauth',label:'OAuth social login',leaf:true,colType:'standard'},
+      ]},
       {id:'buyer-profile',label:'Profile',leaf:true,colType:'standard'},
-      {id:'buyer-ai',label:'AI marketplace',leaf:true,colType:'standard'},
+      {id:'buyer-account',label:'Account & Settings',children:[
+        {id:'buyer-acc-edit',label:'Edit Profile',leaf:true,colType:'standard'},
+        {id:'buyer-acc-payment',label:'Payment Method',leaf:true,colType:'standard'},
+        {id:'buyer-acc-timezone',label:'Time Zone & Currency',leaf:true,colType:'standard'},
+        {id:'buyer-acc-signin',label:'Manage Sign In Methods',leaf:true,colType:'standard'},
+        {id:'buyer-acc-delete',label:'Delete Account',leaf:true,colType:'standard'},
+      ]},
+      {id:'buyer-ai',label:'AI marketplace',children:[
+        {id:'buyer-ai-shoutouts',label:'Shoutouts tab',leaf:true,colType:'standard'},
+        {id:'buyer-ai-perks',label:'Perks tab',leaf:true,colType:'standard'},
+        {id:'buyer-ai-extended',label:'Extended View + Chat',leaf:true,colType:'standard'},
+        {id:'buyer-ai-quickbuy',label:'Quick Buy',children:[
+          {id:'buyer-qb-schedule',label:'Schedule shoutout',leaf:true,colType:'standard'},
+          {id:'buyer-qb-getinline',label:'Get in line',leaf:true,colType:'standard'},
+          {id:'buyer-qb-soldout',label:'Sold out',leaf:true,colType:'standard'},
+          {id:'buyer-qb-blocked',label:'Blocked',leaf:true,colType:'standard'},
+          {id:'buyer-qb-pricechange',label:'Price changed',leaf:true,colType:'standard'},
+          {id:'buyer-qb-wallpreview',label:'Shoutout wall preview',leaf:true,colType:'standard'},
+        ]},
+      ]},
       {id:'buyer-wallet',label:'Wallet',leaf:true,colType:'standard'},
       {id:'buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'standard'},
+      {id:'buyer-community',label:'Community tab',leaf:true,colType:'standard'},
+      {id:'buyer-shoutoutwall',label:'Shoutout Wall (public)',leaf:true,colType:'standard'},
+      {id:'buyer-journey',label:'Join My Journey',leaf:true,colType:'standard'},
+      {id:'buyer-investme',label:'Invest in Me Waitlist',leaf:true,colType:'standard'},
       {id:'buyer-sub',label:'Subscription',leaf:true,colType:'buyer-sub'},
+      {id:'buyer-utility',label:'Utility & Misc',children:[
+        {id:'buyer-feature',label:'Offer a Feature / Report a Bug',leaf:true,colType:'standard'},
+        {id:'buyer-academy',label:'PS Academy Waitlist',leaf:true,colType:'standard'},
+        {id:'buyer-agencywait',label:'Agency Account Waitlist',leaf:true,colType:'standard'},
+      ]},
     ]},
     {id:'creator',label:'Creator',role:'Creator',children:[
       {id:'creator-hub',label:'Personal brand asset hub',leaf:true,colType:'standard'},
+      {id:'creator-reg',label:'Creator Registration / Verification',leaf:true,colType:'standard'},
+      {id:'creator-aiagent',label:'AI Agent',children:[
+        {id:'creator-ai-chat',label:'AI Chat',leaf:true,colType:'standard'},
+        {id:'creator-ai-settings',label:'AI Agent settings',leaf:true,colType:'standard'},
+        {id:'creator-ai-livetest',label:'Live agent test',leaf:true,colType:'standard'},
+      ]},
+      {id:'creator-toolkit',label:'Creator Toolkit',children:[
+        {id:'tk-tracker',label:'Shoutout Tracker',leaf:true,colType:'standard'},
+        {id:'tk-review',label:'Shoutout Review',leaf:true,colType:'standard'},
+        {id:'tk-delivery',label:'Shoutout Delivery Preview',leaf:true,colType:'standard'},
+        {id:'tk-pricing',label:'Shoutout Pricing & Supply',leaf:true,colType:'standard'},
+        {id:'tk-frequency',label:'Shoutout Frequency',leaf:true,colType:'standard'},
+        {id:'tk-format',label:'Default Shoutout Format',leaf:true,colType:'standard'},
+        {id:'tk-discount',label:'Volume Discount',leaf:true,colType:'standard'},
+        {id:'tk-blocked',label:'Blocked Handles / Users',leaf:true,colType:'standard'},
+        {id:'tk-buyerpreview',label:'Buyer Preview',leaf:true,colType:'standard'},
+        {id:'tk-criteria',label:'Join Criteria',leaf:true,colType:'standard'},
+        {id:'tk-refund',label:'Refund Policy',leaf:true,colType:'standard'},
+        {id:'tk-paperwork',label:'Paperwork Services',leaf:true,colType:'standard'},
+      ]},
+      {id:'creator-worth',label:'Worth & Growth',children:[
+        {id:'creator-worth-est',label:'Accurate estimate worth',leaf:true,colType:'standard'},
+        {id:'creator-worth-ipo',label:'Estimate IPO timeline',leaf:true,colType:'standard'},
+        {id:'creator-worth-goal',label:'Set worth goal',leaf:true,colType:'standard'},
+        {id:'creator-worth-sales',label:'Set unit sales goal',leaf:true,colType:'standard'},
+      ]},
+      {id:'creator-wall',label:'Wall Manager',leaf:true,colType:'standard'},
+      {id:'creator-perks',label:'My Brand Perks',leaf:true,colType:'standard'},
+      {id:'creator-social',label:'Social media connection',leaf:true,colType:'standard'},
+      {id:'creator-setforget',label:'Set and Forget / Auto Accept',leaf:true,colType:'standard'},
+      {id:'creator-agency-find',label:'Find an Agency',leaf:true,colType:'standard'},
+      {id:'creator-my-agency',label:'My Agency',leaf:true,colType:'standard'},
+      {id:'creator-val-settings',label:'Valuation Strategy Settings',leaf:true,colType:'standard'},
+      {id:'creator-shoutout-pricing',label:'Shoutout Pricing',leaf:true,colType:'standard'},
+      {id:'creator-beta-invites',label:'My Beta Invites',leaf:true,colType:'standard'},
+      {id:'creator-1b-plan',label:'Set Up 1B Plan',leaf:true,colType:'standard'},
+      {id:'creator-sub-page',label:'Subscription & Tiers page',leaf:true,colType:'standard'},
       {id:'creator-sub',label:'Subscription',children:[
         {id:'creator-ver',label:'Verification',leaf:true,colType:'tier'},
         {id:'creator-com',label:'Commission window',leaf:true,colType:'tier'},
@@ -201,6 +310,14 @@ const TREE = [
     ]},
     {id:'agency',label:'Agency',role:'Agency',children:[
       {id:'agency-hub',label:'Personal brand agency hub',leaf:true,colType:'standard'},
+      {id:'agency-onboard',label:'Agency Onboarding',children:[
+        {id:'agency-onboard-create',label:'Create agency',leaf:true,colType:'standard'},
+        {id:'agency-onboard-find',label:'Find agencies',leaf:true,colType:'standard'},
+        {id:'agency-onboard-inbox',label:'Inbox',leaf:true,colType:'standard'},
+      ]},
+      {id:'agency-profile-edit',label:'Agency Profile Edit',leaf:true,colType:'standard'},
+      {id:'agency-creator-partner',label:'Creator Partnership management',leaf:true,colType:'standard'},
+      {id:'agency-creator-perks',label:'Creator perk management',leaf:true,colType:'standard'},
       {id:'agency-sub',label:'Subscription',children:[
         {id:'agency-ver',label:'Verification',leaf:true,colType:'tier'},
         {id:'agency-com',label:'Commission window',leaf:true,colType:'tier'},
@@ -219,6 +336,9 @@ const TREE = [
       {id:'mgr-profile',label:'My Manager Profile',leaf:true,colType:'standard'},
       {id:'mgr-creators',label:'Creators Hub',leaf:true,colType:'standard'},
       {id:'mgr-team',label:'Agency Team',leaf:true,colType:'standard'},
+      {id:'mgr-team-member',label:'Team Member Details',leaf:true,colType:'standard'},
+      {id:'mgr-team-invite',label:'Team Invite',leaf:true,colType:'standard'},
+      {id:'mgr-upgrade',label:'Manager Account Upgrade',leaf:true,colType:'standard'},
       {id:'mgr-sub',label:'Subscription',children:[
         {id:'mgr-ver',label:'Verification',leaf:true,colType:'tier'},
         {id:'mgr-com',label:'Commission window',leaf:true,colType:'tier'},
@@ -357,43 +477,100 @@ const TREE = [
       {id:'nnp-mkt',label:'Marketing',leaf:true,colType:'notif'},
     ]},
   ]},
-  {id:'content',label:'Content',children:[
-    {id:'cnt-buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
-      {id:'cnt-buyer-signup',label:'Sign up / Log in',leaf:true,colType:'content'},
-      {id:'cnt-buyer-profile',label:'Profile',leaf:true,colType:'content'},
-      {id:'cnt-buyer-ai',label:'AI marketplace',leaf:true,colType:'content'},
-      {id:'cnt-buyer-wallet',label:'Wallet',leaf:true,colType:'content'},
-      {id:'cnt-buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'content'},
-      {id:'cnt-buyer-sub',label:'Subscription',leaf:true,colType:'content'},
+  {id:'backend',label:'Backend / Infrastructure',children:[
+    {id:'be-apis',label:'APIs & Services',children:[
+      {id:'be-apis-auth',label:'Auth',leaf:true,colType:'standard'},
+      {id:'be-apis-payments',label:'Payments',leaf:true,colType:'standard'},
+      {id:'be-apis-notifications',label:'Notifications',leaf:true,colType:'standard'},
+      {id:'be-apis-ai',label:'AI Agent',leaf:true,colType:'standard'},
+      {id:'be-apis-marketplace',label:'Marketplace',leaf:true,colType:'standard'},
     ]},
-    {id:'cnt-creator',label:'Creator',role:'Creator',children:[
-      {id:'cnt-creator-hub',label:'Personal brand asset hub',leaf:true,colType:'content'},
-      {id:'cnt-creator-sub',label:'Subscription',leaf:true,colType:'content'},
+    {id:'be-data',label:'Data Models',children:[
+      {id:'be-data-users',label:'Users',leaf:true,colType:'standard'},
+      {id:'be-data-assets',label:'Assets',leaf:true,colType:'standard'},
+      {id:'be-data-transactions',label:'Transactions',leaf:true,colType:'standard'},
+      {id:'be-data-subscriptions',label:'Subscriptions',leaf:true,colType:'standard'},
+      {id:'be-data-notifs',label:'Notifications',leaf:true,colType:'standard'},
     ]},
-    {id:'cnt-agency',label:'Agency',role:'Agency',children:[
-      {id:'cnt-agency-hub',label:'Agency hub',leaf:true,colType:'content'},
-      {id:'cnt-agency-sub',label:'Subscription',leaf:true,colType:'content'},
+    {id:'be-infra',label:'Infrastructure & DevOps',children:[
+      {id:'be-infra-cicd',label:'CI/CD',leaf:true,colType:'standard'},
+      {id:'be-infra-hosting',label:'Hosting',leaf:true,colType:'standard'},
+      {id:'be-infra-monitoring',label:'Monitoring',leaf:true,colType:'standard'},
     ]},
-    {id:'cnt-manager',label:'Manager',role:'Manager',children:[
-      {id:'cnt-mgr-hub',label:'Agency Hub dashboard',leaf:true,colType:'content'},
-      {id:'cnt-mgr-profile',label:'My Manager Profile',leaf:true,colType:'content'},
-      {id:'cnt-mgr-creators',label:'Creators Hub',leaf:true,colType:'content'},
-      {id:'cnt-mgr-team',label:'Agency Team',leaf:true,colType:'content'},
-    ]},
-    {id:'cnt-xseller',label:'Cross-seller',role:'Cross-seller',children:[
-      {id:'cnt-xs-sub',label:'Subscription',leaf:true,colType:'content'},
-    ]},
-    {id:'cnt-legal',label:'Legal & Financial',role:'Legal & Financial',children:[
-      {id:'cnt-legal-sub',label:'Subscription',leaf:true,colType:'content'},
-    ]},
-    {id:'cnt-business',label:'Business',role:'Business',children:[
-      {id:'cnt-biz-sub',label:'Subscription',leaf:true,colType:'content'},
-    ]},
-    {id:'cnt-nonprofit',label:'Nonprofit',role:'Nonprofit',children:[
-      {id:'cnt-np-sub',label:'Subscription',leaf:true,colType:'content'},
+    {id:'be-jobs',label:'Background Jobs & Integrations',children:[
+      {id:'be-jobs-scheduled',label:'Scheduled jobs',leaf:true,colType:'standard'},
+      {id:'be-jobs-webhooks',label:'Webhooks',leaf:true,colType:'standard'},
+      {id:'be-jobs-3p',label:'Third-party integrations',leaf:true,colType:'standard'},
     ]},
   ]},
   {id:'versions',label:'Versions',special:'versions'},
+  {id:'content',label:'Informative Content',children:[
+    {id:'cnt-buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
+      {id:'cnt-buyer-signup',label:'Sign up / Log in',leaf:true,colType:'simple'},
+      {id:'cnt-buyer-profile',label:'Profile',leaf:true,colType:'simple'},
+      {id:'cnt-buyer-ai',label:'AI marketplace',leaf:true,colType:'simple'},
+      {id:'cnt-buyer-wallet',label:'Wallet',leaf:true,colType:'simple'},
+      {id:'cnt-buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'simple'},
+      {id:'cnt-buyer-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-creator',label:'Creator',role:'Creator',children:[
+      {id:'cnt-creator-hub',label:'Personal brand asset hub',leaf:true,colType:'simple'},
+      {id:'cnt-creator-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-agency',label:'Agency',role:'Agency',children:[
+      {id:'cnt-agency-hub',label:'Agency hub',leaf:true,colType:'simple'},
+      {id:'cnt-agency-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-manager',label:'Manager',role:'Manager',children:[
+      {id:'cnt-mgr-hub',label:'Agency Hub dashboard',leaf:true,colType:'simple'},
+      {id:'cnt-mgr-profile',label:'My Manager Profile',leaf:true,colType:'simple'},
+      {id:'cnt-mgr-creators',label:'Creators Hub',leaf:true,colType:'simple'},
+      {id:'cnt-mgr-team',label:'Agency Team',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-xseller',label:'Cross-seller',role:'Cross-seller',children:[
+      {id:'cnt-xs-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-legal',label:'Legal & Financial',role:'Legal & Financial',children:[
+      {id:'cnt-legal-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-business',label:'Business',role:'Business',children:[
+      {id:'cnt-biz-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cnt-nonprofit',label:'Nonprofit',role:'Nonprofit',children:[
+      {id:'cnt-np-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+  ]},
+  {id:'content-strategy',label:'Content Strategy',children:[
+    {id:'cs-buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
+      {id:'cs-buyer-signup',label:'Sign up / Log in',leaf:true,colType:'simple'},
+      {id:'cs-buyer-profile',label:'Profile',leaf:true,colType:'simple'},
+      {id:'cs-buyer-ai',label:'AI marketplace',leaf:true,colType:'simple'},
+      {id:'cs-buyer-wallet',label:'Wallet',leaf:true,colType:'simple'},
+      {id:'cs-buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'simple'},
+      {id:'cs-buyer-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cs-creator',label:'Creator',role:'Creator',children:[
+      {id:'cs-creator-hub',label:'Personal brand asset hub',leaf:true,colType:'simple'},
+      {id:'cs-creator-toolkit',label:'Creator Toolkit',leaf:true,colType:'simple'},
+      {id:'cs-creator-aiagent',label:'AI Agent',leaf:true,colType:'simple'},
+      {id:'cs-creator-worth',label:'Worth & Growth',leaf:true,colType:'simple'},
+      {id:'cs-creator-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cs-agency',label:'Agency',role:'Agency',children:[
+      {id:'cs-agency-hub',label:'Agency hub',leaf:true,colType:'simple'},
+      {id:'cs-agency-onboard',label:'Agency Onboarding',leaf:true,colType:'simple'},
+      {id:'cs-agency-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+    {id:'cs-manager',label:'Manager',role:'Manager',children:[
+      {id:'cs-mgr-hub',label:'Agency Hub dashboard',leaf:true,colType:'simple'},
+      {id:'cs-mgr-profile',label:'My Manager Profile',leaf:true,colType:'simple'},
+      {id:'cs-mgr-creators',label:'Creators Hub',leaf:true,colType:'simple'},
+      {id:'cs-mgr-team',label:'Agency Team',leaf:true,colType:'simple'},
+    ]},
+    {id:'cs-xseller',label:'Cross-seller',role:'Cross-seller',children:[
+      {id:'cs-xs-sub',label:'Subscription',leaf:true,colType:'simple'},
+    ]},
+  ]},
 ];
 
 const COL_TYPES = {
@@ -402,6 +579,7 @@ const COL_TYPES = {
   'buyer-sub':['Shoutout wall recognition','Pay-as-you-go credits','Buyer tools'],
   'notif':['In-app','Push','Email','SMS'],
   'content':['Social Media','FAQ','Announcement','Done'],
+  'simple':['Not Done','Done'],
 };
 
 function getColumns(colType){return COL_TYPES[colType]||COL_TYPES['standard']}
@@ -473,7 +651,7 @@ const localStore = {
   list(prefix){ return {keys:Object.keys(this.data).filter(k=>!prefix||k.startsWith(prefix))}; },
   load(){
     try{
-      for(let k of ['ps-items','ps-versions','ps-activeVer','ps-open','ps-upd']){
+      for(let k of ['ps-items','ps-versions','ps-activeVer','ps-nextVer','ps-open','ps-upd']){
         let v=localStorage.getItem('ps_'+k);
         if(v)this.data[k]=v;
       }
@@ -499,6 +677,9 @@ function tryLogin(){
   let v=document.getElementById('pw-input').value;
   if(v===PASS){
     authed=true;
+    if(document.getElementById('remember-check').checked){
+      try{localStorage.setItem('ps-remember','true');}catch(e){}
+    }
     document.getElementById('gate').style.display='none';
     document.getElementById('app').style.display='flex';
     initApp();
@@ -508,7 +689,25 @@ function tryLogin(){
 }
 
 document.getElementById('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
-function logout(){authed=false;document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';}
+function logout(){
+  authed=false;
+  try{localStorage.removeItem('ps-remember');}catch(e){}
+  document.getElementById('gate').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+// Auto-login if remember flag is set
+(function(){
+  try{
+    if(localStorage.getItem('ps-remember')==='true'){
+      authed=true;
+      document.getElementById('gate').style.display='none';
+      document.getElementById('app').style.display='flex';
+      // initApp runs after DOMContentLoaded; defer one tick so DOM is ready
+      setTimeout(initApp,0);
+    }
+  }catch(e){}
+})();
 
 async function initApp(){
   localStore.load();
@@ -518,14 +717,14 @@ async function initApp(){
     const ts=Date.now();
     items=[
       // ── PRODUCT › Basic / Buyer ──
-      {id:'s-b-01',title:'Sign up / Log in',desc:'User registration and login flow.',section:'buyer-signup',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-01',title:'Sign up / Log in',desc:'User registration and login flow.',section:'buyer-auth-email',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-b-02',title:'Profile page',desc:'Basic profile showing name, handle, and link to AI Marketplace.',section:'buyer-profile',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
-      {id:'s-b-03',title:'AI Marketplace — Shoutouts',desc:'Browse and quick-buy shoutout units from creators. Shows price, units sold recently, quantity selector.',section:'buyer-ai',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
-      {id:'s-b-04',title:'AI Marketplace — Perks',desc:'Perks tab with search by personal brand, niche, or perk.',section:'buyer-ai',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-03',title:'AI Marketplace — Shoutouts',desc:'Browse and quick-buy shoutout units from creators. Shows price, units sold recently, quantity selector.',section:'buyer-ai-shoutouts',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-04',title:'AI Marketplace — Perks',desc:'Perks tab with search by personal brand, niche, or perk.',section:'buyer-ai-perks',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-b-05',title:'Wallet',desc:'Est. Net Worth, Available Balance, Projected Sales Potential, Withdraw & Deposit, pending funds (bought & sold), full transaction history.',section:'buyer-wallet',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-b-06',title:'Shoutouts Portfolio',desc:'Total spent, total shoutout value, value change %, est. total impact. Portfolio table: personal brand, units bought, shoutout price, total value, avg cost. My Shoutout Tracker.',section:'buyer-shoutout',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-b-07',title:'Personal Brand IPO Index',desc:'Ranked leaderboard of creators by brand worth and shoutout unit price. Accessible from buyer sidebar.',section:'buyer-shoutout',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
-      {id:'s-b-08',title:'In-app notifications',desc:'Live in-app notifications — e.g. Trade Successful, Deposit Successful.',section:'buyer-signup',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-08',title:'In-app notifications',desc:'Live in-app notifications — e.g. Trade Successful, Deposit Successful.',section:'buyer-profile',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       // ── PRODUCT › Creator ──
       {id:'s-c-01',title:'Asset Profile (own view)',desc:'Creator\'s own public profile: bio, niches, location, lexicon, total followers, buyers/buys/following/followers. "Complete Your Profile" CTA, connect socials button.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-c-02',title:'Asset Profile (public view)',desc:'Public visitor view: est. brand worth range, IPO readiness progress bar toward $1B, "Would You Invest In Me" comment section.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
@@ -541,21 +740,21 @@ async function initApp(){
       {id:'s-m-03',title:'Agency Team',desc:'Members/Applications/Invites tabs. Team table: manager name, role (Manager/Admin), email, date added, permissions count. Invite Team Members button.',section:'mgr-team',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-m-04',title:'My Manager Profile',desc:'Manager card: handle, name, agency affiliation, role badge, join date, agency niches, IPO contribution gauge. Updates & Actions section. Performance stats: creators managed, est. valuation added, revenue generated, commission earned, units sold.',section:'mgr-profile',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       // ── CONTENT (Beta features to-dos) ──
-      {id:'cnt-s-01',title:'Sign up / Log in',desc:'Create content for Sign up / Log in feature release.',section:'cnt-buyer-signup',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-02',title:'Profile page',desc:'Create content for Profile page feature release.',section:'cnt-buyer-profile',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-03',title:'AI Marketplace — Shoutouts',desc:'Create content for AI Marketplace Shoutouts feature release.',section:'cnt-buyer-ai',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-04',title:'AI Marketplace — Perks',desc:'Create content for AI Marketplace Perks feature release.',section:'cnt-buyer-ai',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-05',title:'Wallet',desc:'Create content for Wallet feature release.',section:'cnt-buyer-wallet',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-06',title:'Shoutouts Portfolio',desc:'Create content for Shoutouts Portfolio feature release.',section:'cnt-buyer-shoutout',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-07',title:'Personal Brand IPO Index',desc:'Create content for Personal Brand IPO Index feature release.',section:'cnt-buyer-shoutout',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-08',title:'In-app notifications',desc:'Create content for In-app notifications feature release.',section:'cnt-buyer-signup',col:'Social Media',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-09',title:'Asset Profile (own + public view)',desc:'Create content for Creator Asset Profile feature release.',section:'cnt-creator-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-10',title:'Personal Brand Hub',desc:'Create content for Personal Brand Hub feature release — 3-step journey, AI scores, action cards.',section:'cnt-creator-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-11',title:'Agency Profile',desc:'Create content for Agency Profile feature release.',section:'cnt-agency-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-12',title:'Agency Hub dashboard',desc:'Create content for Agency Hub dashboard feature release.',section:'cnt-mgr-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-13',title:'Creators Hub',desc:'Create content for Creators Hub feature release.',section:'cnt-mgr-creators',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-14',title:'Agency Team',desc:'Create content for Agency Team feature release.',section:'cnt-mgr-team',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
-      {id:'cnt-s-15',title:'My Manager Profile',desc:'Create content for My Manager Profile feature release.',section:'cnt-mgr-profile',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-01',title:'Sign up / Log in',desc:'Create content for Sign up / Log in feature release.',section:'cnt-buyer-signup',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-02',title:'Profile page',desc:'Create content for Profile page feature release.',section:'cnt-buyer-profile',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-03',title:'AI Marketplace — Shoutouts',desc:'Create content for AI Marketplace Shoutouts feature release.',section:'cnt-buyer-ai',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-04',title:'AI Marketplace — Perks',desc:'Create content for AI Marketplace Perks feature release.',section:'cnt-buyer-ai',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-05',title:'Wallet',desc:'Create content for Wallet feature release.',section:'cnt-buyer-wallet',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-06',title:'Shoutouts Portfolio',desc:'Create content for Shoutouts Portfolio feature release.',section:'cnt-buyer-shoutout',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-07',title:'Personal Brand IPO Index',desc:'Create content for Personal Brand IPO Index feature release.',section:'cnt-buyer-shoutout',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-08',title:'In-app notifications',desc:'Create content for In-app notifications feature release.',section:'cnt-buyer-signup',col:'Not Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-09',title:'Asset Profile (own + public view)',desc:'Create content for Creator Asset Profile feature release.',section:'cnt-creator-hub',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-10',title:'Personal Brand Hub',desc:'Create content for Personal Brand Hub feature release — 3-step journey, AI scores, action cards.',section:'cnt-creator-hub',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-11',title:'Agency Profile',desc:'Create content for Agency Profile feature release.',section:'cnt-agency-hub',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-12',title:'Agency Hub dashboard',desc:'Create content for Agency Hub dashboard feature release.',section:'cnt-mgr-hub',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-13',title:'Creators Hub',desc:'Create content for Creators Hub feature release.',section:'cnt-mgr-creators',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-14',title:'Agency Team',desc:'Create content for Agency Team feature release.',section:'cnt-mgr-team',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-15',title:'My Manager Profile',desc:'Create content for My Manager Profile feature release.',section:'cnt-mgr-profile',col:'Not Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
       // ── BACK OFFICE ──
       {id:'s-bo-01',title:'Dashboard',desc:'Dashboard Overview: Users section (active users, issuers/creators, managers, deactivated users, new users today, new users last 30 days). Financials (total platform balance, total portfolios, total assets held). Activity (shoutouts purchased today, refund requests open, top user by balance). Development Tools section (dev/demo only: fill DB, sanity check, reset DB).',section:'bo-dashboard',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-bo-02',title:'Users',desc:'User Management: search by username/email/name, Create User button. Table: avatar, roles, verified status, username, name, email.',section:'bo-users',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
@@ -566,9 +765,110 @@ async function initApp(){
       {id:'s-bo-07',title:'Platform Settings',desc:'Manage social media platform icons and settings. List of platforms (YouTube, Facebook, Instagram, TikTok, etc.) with platform key, last updated date, Edit button. Create New Platform button.',section:'bo-platform',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-bo-08',title:'Bug Reports',desc:'Bug Reports Management: monitor and manage user-reported bugs. Search by message content, filter by status. Table: ID, User, Message, Status, Created.',section:'bo-bugs',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
       {id:'s-bo-09',title:'Agency Structure',desc:'Select agency dropdown. Stats per agency: managers count, creators count, founders count, avg creators per manager. Tabs: Org Chart (visual hierarchy — Founder → Managers → Creators with buy fee %), Managers, Creators.',section:'bo-agency',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Basic / Buyer — Auth sub-steps ──
+      {id:'s-ba-01',title:'Email verification step',desc:'Multi-step signup: email entry and verification code confirmation.',section:'buyer-auth-email',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-02',title:'OTP challenge',desc:'One-time password challenge during signup and sensitive actions.',section:'buyer-auth-otp',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-03',title:'Invitation code entry',desc:'Beta invitation code gate during signup flow.',section:'buyer-auth-invite',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-04',title:'Birthdate entry',desc:'Age verification step during signup.',section:'buyer-auth-birthdate',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-05',title:'Username selection',desc:'Handle/username selection step during signup.',section:'buyer-auth-username',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-06',title:'Instagram data confirmation',desc:'Instagram handle confirmation step linking social account at signup.',section:'buyer-auth-ig',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-07',title:'Forgot password flow',desc:'Password reset via email: forgot password request, email sent confirmation, reset password.',section:'buyer-auth-forgot',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ba-08',title:'OAuth social login',desc:'Login/signup via Facebook, Google, Instagram, TikTok, and X/Twitter OAuth callbacks.',section:'buyer-auth-oauth',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Basic / Buyer — Account & Settings ──
+      {id:'s-bac-01',title:'Edit Profile',desc:'Edit name, bio, lexicon, niches, and other profile details from account settings.',section:'buyer-acc-edit',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bac-02',title:'Payment Method management',desc:'Add, view, and delete saved payment methods (Stripe-backed).',section:'buyer-acc-payment',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bac-03',title:'Time Zone & Currency',desc:'User preference settings for local timezone and display currency.',section:'buyer-acc-timezone',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bac-04',title:'Manage Sign In Methods',desc:'View and manage linked sign-in methods (email, social OAuth).',section:'buyer-acc-signin',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bac-05',title:'Delete Account flow',desc:'Multi-step account deletion: obligations check, pending shoutouts review, wallet balance resolution, permanent deletion.',section:'buyer-acc-delete',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Basic / Buyer — Marketplace ──
+      {id:'s-bm-01',title:'Marketplace Extended View + Chat',desc:'Extended creator card view with integrated chat/sentiment feed.',section:'buyer-ai-extended',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-02',title:'Quick Buy: Schedule shoutout',desc:'Schedule a shoutout for a specific date/time during the buy flow.',section:'buyer-qb-schedule',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-03',title:'Quick Buy: Get in line',desc:'Queue/waitlist state when a creator\'s shoutout slots are full.',section:'buyer-qb-getinline',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-04',title:'Quick Buy: Sold out',desc:'Sold out state handling in the buy flow.',section:'buyer-qb-soldout',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-05',title:'Quick Buy: Blocked',desc:'Blocked state — buyer is blocked by the creator.',section:'buyer-qb-blocked',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-06',title:'Quick Buy: Price changed',desc:'Modal shown when price changes between browsing and checkout.',section:'buyer-qb-pricechange',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bm-07',title:'Quick Buy: Shoutout wall preview',desc:'Preview of how the purchased shoutout will appear on the creator\'s wall.',section:'buyer-qb-wallpreview',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Basic / Buyer — Public profile sub-features ──
+      {id:'s-bpf-01',title:'Community tab',desc:'Public community/comments section on creator profiles, viewable by buyers.',section:'buyer-community',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bpf-02',title:'Shoutout Wall (public)',desc:'Public-facing shoutout wall on creator profiles showing purchased shoutouts.',section:'buyer-shoutoutwall',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bpf-03',title:'Join My Journey',desc:'CTA page for fans to follow and support a creator\'s IPO journey.',section:'buyer-journey',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bpf-04',title:'Invest in Me Waitlist',desc:'Waitlist for fans to register interest in a creator\'s future IPO/investment offering.',section:'buyer-investme',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Basic / Buyer — Utility ──
+      {id:'s-bu-01',title:'Offer a Feature / Report a Bug',desc:'In-app forms for users to submit feature requests and bug reports.',section:'buyer-feature',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bu-02',title:'PS Academy Waitlist',desc:'Waitlist signup page for PassionStocks Academy.',section:'buyer-academy',col:'Done',priority:'Low',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bu-03',title:'Agency Account Waitlist',desc:'Public waitlist page for users interested in opening an agency account.',section:'buyer-agencywait',col:'Done',priority:'Low',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator — Registration & Verification ──
+      {id:'s-cr-01',title:'Creator Registration / Verification flow',desc:'Full creator onboarding: verification, approval, post-to-social, minimum requirement check, Instagram data linking, activated auto-sell.',section:'creator-reg',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator — AI Agent ──
+      {id:'s-cai-01',title:'AI Chat',desc:'Direct chat interface with the creator\'s AI agent.',section:'creator-ai-chat',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-cai-02',title:'AI Agent settings',desc:'Configure AI agent behavior, responses, and settings.',section:'creator-ai-settings',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-cai-03',title:'Live agent test',desc:'Test environment for previewing AI agent interactions before going live.',section:'creator-ai-livetest',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator — Toolkit ──
+      {id:'s-tk-01',title:'Shoutout Tracker',desc:'Creator\'s view of all purchased shoutouts — status, buyer handle, and details.',section:'tk-tracker',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-02',title:'Shoutout Review',desc:'Review and approve/reject incoming shoutout requests.',section:'tk-review',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-03',title:'Shoutout Delivery Preview',desc:'Preview exactly how a shoutout will be delivered before publishing.',section:'tk-delivery',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-04',title:'Shoutout Pricing & Supply',desc:'Set and adjust shoutout unit price, supply, pricing mechanism (auto/manual), and advanced unit supply settings.',section:'tk-pricing',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-05',title:'Shoutout Frequency',desc:'Configure how often shoutouts are delivered — schedule and time slot settings.',section:'tk-frequency',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-06',title:'Default Shoutout Format',desc:'Set the default format for shoutout posts — edit top line and bottom line templates.',section:'tk-format',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-07',title:'Volume Discount',desc:'Configure bulk purchase discount for buyers who buy multiple shoutout units.',section:'tk-discount',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-08',title:'Blocked Handles / Users',desc:'Manage blocked Instagram handles and blocked PassionStocks users.',section:'tk-blocked',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-09',title:'Buyer Preview',desc:'Preview the buyer-facing view of the creator\'s profile and shoutout listing.',section:'tk-buyerpreview',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-10',title:'Join Criteria',desc:'Set criteria buyers must meet to purchase shoutouts.',section:'tk-criteria',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-11',title:'Refund Policy',desc:'Configure the creator\'s shoutout refund policy.',section:'tk-refund',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-tk-12',title:'Paperwork Services',desc:'Access to legal/paperwork services available to creators.',section:'tk-paperwork',col:'Done',priority:'Low',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator — Worth & Growth ──
+      {id:'s-cw-01',title:'Accurate estimate worth',desc:'Tool to accurately estimate creator\'s current brand worth.',section:'creator-worth-est',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-cw-02',title:'Estimate IPO timeline',desc:'Projected timeline for the creator\'s brand to reach IPO readiness.',section:'creator-worth-ipo',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-cw-03',title:'Set worth goal',desc:'Set a target brand valuation goal and track progress.',section:'creator-worth-goal',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-cw-04',title:'Set unit sales goal',desc:'Set a target for shoutout unit sales and track progress.',section:'creator-worth-sales',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator — Hub features ──
+      {id:'s-ch-01',title:'Wall Manager',desc:'Manage the creator\'s shoutout wall — visibility, layout, and content.',section:'creator-wall',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-02',title:'My Brand Perks',desc:'Create and manage brand perks available to buyers/investors.',section:'creator-perks',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-03',title:'Social media connection',desc:'Connect Instagram, TikTok, and X accounts to the creator\'s hub via OAuth.',section:'creator-social',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-04',title:'Set and Forget / Auto Accept settings',desc:'Configure automatic shoutout acceptance and delivery (set-and-forget) settings.',section:'creator-setforget',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-05',title:'Find an Agency',desc:'Browse and connect with agencies to manage the creator\'s brand.',section:'creator-agency-find',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-06',title:'My Agency',desc:'View and manage the creator\'s current agency relationship.',section:'creator-my-agency',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-07',title:'Valuation Strategy Settings',desc:'Configure and adjust the creator\'s brand valuation strategy.',section:'creator-val-settings',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-08',title:'Shoutout Pricing (hub-level)',desc:'Hub-level shoutout pricing overview and quick price adjustments.',section:'creator-shoutout-pricing',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-09',title:'My Beta Invites',desc:'View and manage beta invitation codes the creator can distribute.',section:'creator-beta-invites',col:'Done',priority:'Low',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-10',title:'Set Up 1B Plan',desc:'Creator\'s guided setup for planning the path to $1B brand valuation.',section:'creator-1b-plan',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ch-11',title:'Subscription & Tiers page',desc:'Creator-facing subscription management page showing current tier and upgrade options.',section:'creator-sub-page',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Agency — Onboarding & management ──
+      {id:'s-ag-01',title:'Create agency',desc:'Agency onboarding: create a new agency account with name, profile, and settings.',section:'agency-onboard-create',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ag-02',title:'Find agencies',desc:'Browse and discover agencies during onboarding.',section:'agency-onboard-find',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ag-03',title:'Onboarding inbox',desc:'Inbox for agency onboarding communications and invitations.',section:'agency-onboard-inbox',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ag-04',title:'Agency Profile Edit',desc:'Edit agency name, description, niches, specialties, and admin details.',section:'agency-profile-edit',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ag-05',title:'Creator Partnership management',desc:'Manage individual creator partnerships: perks, public profile, shoutout settings, social accounts.',section:'agency-creator-partner',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-ag-06',title:'Creator perk management (agency side)',desc:'Agency-side management of perks for creators in the roster.',section:'agency-creator-perks',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Manager ──
+      {id:'s-mg-01',title:'Team Member Details',desc:'View individual team member profile, role, permissions, and activity.',section:'mgr-team-member',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-mg-02',title:'Team Invite',desc:'Send invitations to new team members to join the agency.',section:'mgr-team-invite',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-mg-03',title:'Manager Account Upgrade',desc:'Upgrade flow from regular account to manager/agency role.',section:'mgr-upgrade',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
     ];
     await saveData();
   }
+  // One-time backfill: set targetVersion on Product/Back office/Notifications/Backend items
+  try{
+    let migR=await storage.get('ps-migrated-targetver');
+    if(!migR||!migR.value){
+      const MIGR_ROOTS=['product','backoffice','notifications','backend'];
+      function migrTop(sectionId){
+        function s(nodes,id,top){for(let n of nodes){let t=top||n.id;if(n.id===id)return t;if(n.children){let f=s(n.children,id,t);if(f)return f;}}return null;}
+        return s(TREE,sectionId,null);
+      }
+      let betaVer=versions.find(v=>v.id==='beta')||versions[0];
+      let betaId=betaVer?betaVer.id:'beta';
+      let migrCount=0;
+      for(let item of items){
+        if(item.targetVersion)continue;
+        let top=migrTop(item.section);
+        if(top&&MIGR_ROOTS.includes(top)){item.targetVersion=betaId;migrCount++;}
+      }
+      if(migrCount>0)await saveData();
+      await storage.set('ps-migrated-targetver','1',true);
+      console.log('[migration] targetVersion backfill: '+migrCount+' items updated, betaId='+betaId);
+    }
+  }catch(e){console.warn('[migration] targetVersion backfill failed',e);}
   renderSidebar();
   if(!selectedNode){let first=ALL_LEAVES[0];if(first)selectNode(first.id);}
   startSync();
@@ -578,8 +878,10 @@ async function loadData(){
   try{let r=await storage.get('ps-items');items=r?JSON.parse(r.value):[];}catch(e){items=[];}
   try{let r=await storage.get('ps-versions');versions=r?JSON.parse(r.value):[{id:'beta',name:'Beta',created:Date.now()}];}catch(e){versions=[{id:'beta',name:'Beta',created:Date.now()}];}
   try{let r=await storage.get('ps-activeVer');activeVerId=r?r.value:'beta';}catch(e){activeVerId='beta';}
+  try{let r=await storage.get('ps-nextVer');nextVerId=r&&r.value?r.value:null;}catch(e){nextVerId=null;}
   try{let r=await storage.get('ps-open');openNodes=r?JSON.parse(r.value):{};}catch(e){openNodes={};}
   try{let r=await storage.get('ps-upd');lastUpd=r?r.value:null;updateUpdBadge();}catch(e){}
+  updateNextVerBadge();
 }
 
 async function saveData(){
@@ -587,6 +889,7 @@ async function saveData(){
   await storage.set('ps-items',JSON.stringify(items),true);
   await storage.set('ps-versions',JSON.stringify(versions),true);
   await storage.set('ps-activeVer',activeVerId,true);
+  await storage.set('ps-nextVer',nextVerId||'',true);
   await storage.set('ps-open',JSON.stringify(openNodes),true);
   await storage.set('ps-upd',String(now),true);
   lastUpd=String(now);
@@ -621,6 +924,16 @@ function renderSidebar(){
 function renderTree(nodes,depth){
   let frag=document.createDocumentFragment();
   for(let n of nodes){
+    // Inject a visual section divider in the root tree before content sections
+    if(depth===0&&n.id==='content'){
+      let divEl=document.createElement('div');
+      divEl.style.cssText='margin:10px 8px 2px;border-top:0.5px solid rgba(0,0,0,0.1)';
+      let lblEl=document.createElement('div');
+      lblEl.textContent='CONTENT';
+      lblEl.style.cssText='font-size:10px;font-weight:600;color:#bbb;letter-spacing:.07em;padding:6px 10px 2px;text-transform:uppercase';
+      frag.appendChild(divEl);
+      frag.appendChild(lblEl);
+    }
     let wrap=document.createElement('div');
     let isOpen=openNodes[n.id];
     let cnt=n.special==='versions'?versions.length:countItems(n.id);
@@ -672,6 +985,7 @@ function selectNode(id){selectedNode=id;renderSidebar();renderContent(id);}
 
 function renderContent(id){
   let content=document.getElementById('content');
+  if(id==='nv:feed'){renderNextVerFeed();return;}
   if(id&&id.startsWith('ver:')){renderVersionContent(id.slice(4));return;}
   let node=findNode(TREE,id);
   if(!node){content.innerHTML='<p class="empty">Select a section</p>';return;}
@@ -724,10 +1038,14 @@ function renderVersionsRoot(){
   let html=`<div class="section-title">Versions</div><div class="section-path">Active: ${ver?ver.name:'none'}</div><div style="margin:1rem 0">`;
   for(let v of versions){
     let isActive=v.id===activeVerId;
+    let isNext=v.id===nextVerId;
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.1)">
 <span style="font-size:14px;font-weight:500">${esc(v.name)}</span>
 ${isActive?'<span class="ver-active-badge">active</span>':`<button class="ver-set-btn" onclick="setActiveVer('${v.id}')">set active</button>`}
-<span style="font-size:12px;color:#aaa;margin-left:auto">${items.filter(i=>i.doneInVer===v.id).length} items</span>
+${isNext?'<span class="ver-next-badge">next</span>':`<button class="ver-set-btn" onclick="setNextVer('${v.id}')">set next</button>`}
+<span style="font-size:12px;color:#aaa;margin-left:auto">${items.filter(i=>i.doneInVer===v.id).length} done</span>
+<span style="font-size:12px;color:#aaa">${items.filter(i=>i.targetVersion===v.id).length} targeted</span>
+<button class="ver-set-btn" onclick="openReleaseNotes('${v.id}')">release notes</button>
 </div>`;
   }
   html+=`</div><button class="ver-add-btn" onclick="openVerModal()">+ create new version</button>`;
@@ -742,12 +1060,13 @@ function renderVersionContent(verId){
   let html=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
 <div class="section-title">${esc(ver.name)}</div>
 ${isActive?'<span class="ver-active-badge">active</span>':`<button class="ver-set-btn" onclick="setActiveVer('${verId}')">set active</button>`}
+<button class="ver-set-btn" onclick="openReleaseNotes('${verId}')">release notes</button>
 </div><div class="section-path">${verItems.length} completed items</div>`;
   if(verItems.length===0){html+=`<p class="empty">No items completed in this version yet.</p>`;}
   else{
     // Group by top-level section (Product / Back office / Notifications), then by role/subsection
-    const TOP=['product','backoffice','notifications','content'];
-    const TOP_LABELS={'product':'Product','backoffice':'Back office','notifications':'Notifications','content':'Content'};
+    const TOP=['product','backoffice','notifications','content','content-strategy','backend'];
+    const TOP_LABELS={'product':'Product','backoffice':'Back office','notifications':'Notifications','content':'Informative Content','content-strategy':'Content Strategy','backend':'Backend / Infrastructure'};
     function getTopLevel(sectionId){
       function search(nodes,id,top){
         for(let n of nodes){
@@ -819,6 +1138,7 @@ function openAdd(sectionId){
   document.getElementById('f-roadmap').checked=false;
   document.getElementById('f-pri').value='Medium';
   populateSectionSelect(sectionId);
+  populateTargetVerSelect(null);
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -834,6 +1154,7 @@ function openEdit(itemId){
   document.getElementById('f-roadmap').checked=!!item.roadmap;
   document.getElementById('f-pri').value=item.priority||'Medium';
   populateSectionSelect(item.section);
+  populateTargetVerSelect(item.targetVersion||null);
   let colSel=document.getElementById('f-col');
   for(let opt of colSel.options){if(opt.value===item.col){opt.selected=true;break;}}
   document.getElementById('modal-overlay').classList.add('open');
@@ -877,16 +1198,17 @@ function saveItem(){
   let date=document.getElementById('f-date').value;
   let roadmap=document.getElementById('f-roadmap').checked;
   let desc=document.getElementById('f-desc').value.trim();
+  let targetVersion=document.getElementById('f-targetver').value||null;
   if(editingId){
     let item=items.find(i=>i.id===editingId);
     if(item){
       let wasDone=item.col==='Done';
-      Object.assign(item,{title,section,col,priority,assignee,date,roadmap,desc});
+      Object.assign(item,{title,section,col,priority,assignee,date,roadmap,desc,targetVersion});
       if(col==='Done'&&!wasDone){item.doneInVer=activeVerId;}
       if(col!=='Done'){delete item.doneInVer;}
     }
   } else {
-    let item={id:'i'+Date.now(),title,desc,section,col,priority,assignee,date,roadmap,created:Date.now()};
+    let item={id:'i'+Date.now(),title,desc,section,col,priority,assignee,date,roadmap,targetVersion,created:Date.now()};
     if(col==='Done'){item.doneInVer=activeVerId;}
     items.push(item);
   }
@@ -939,6 +1261,283 @@ function setActiveVer(id){
   let v=versions.find(x=>x.id===id);showToast((v?v.name:'Version')+' is now active');
 }
 
+function openReleaseNotes(verId){
+  let ver=versions.find(v=>v.id===verId);
+  if(!ver)return;
+  let verItems=items.filter(i=>i.doneInVer===verId);
+  // Only include Product, Back office, Notifications, and Backend — not content sections
+  const RN_TOP=['product','backoffice','notifications','backend'];
+  function getTopLevel(sectionId){
+    function search(nodes,id,top){
+      for(let n of nodes){let t=top||n.id;if(n.id===id)return t;if(n.children){let f=search(n.children,id,t);if(f)return f;}}
+      return null;
+    }
+    return search(TREE,sectionId,null);
+  }
+  function getRoleLabel(sectionId){
+    function search(nodes,id,role){
+      for(let n of nodes){let r=n.role||role;if(n.id===id)return r||'General';if(n.children){let f=search(n.children,id,r);if(f)return f;}}
+      return null;
+    }
+    return search(TREE,sectionId,null)||'General';
+  }
+  // Group: {product:{Creator:[titles],...}, backoffice:{General:[...]}, ...}
+  let structure={};
+  for(let item of verItems){
+    let top=getTopLevel(item.section);
+    if(!top||!RN_TOP.includes(top))continue;
+    let role=getRoleLabel(item.section);
+    if(!structure[top])structure[top]={};
+    if(!structure[top][role])structure[top][role]=[];
+    structure[top][role].push(item.title);
+  }
+  // Role → friendly header label
+  const ROLE_HEADERS={
+    'Creator':'NEW FOR CREATORS',
+    'Basic / Buyer':'NEW FOR BUYERS',
+    'Agency':'NEW FOR AGENCIES',
+    'Manager':'NEW FOR MANAGERS',
+    'Cross-seller':'NEW FOR CROSS-SELLERS',
+    'Legal & Financial':'NEW FOR LEGAL & FINANCIAL',
+    'Business':'NEW FOR BUSINESSES',
+    'Nonprofit':'NEW FOR NONPROFITS',
+    'General':'GENERAL',
+  };
+  const TOP_HEADERS={
+    'product':null, // roles already give headers
+    'backoffice':'BACK OFFICE / ADMIN',
+    'notifications':'NOTIFICATIONS',
+    'backend':'BACKEND / INFRASTRUCTURE',
+  };
+  let today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  let lines=[`PassionStocks ${ver.name} — Release Notes`,today,''];
+  for(let top of RN_TOP){
+    if(!structure[top]||Object.keys(structure[top]).length===0)continue;
+    if(TOP_HEADERS[top]){
+      // non-product sections: single header
+      lines.push(TOP_HEADERS[top]+':');
+      for(let [role,titles] of Object.entries(structure[top])){
+        for(let t of titles)lines.push('- '+t);
+      }
+      lines.push('');
+    } else {
+      // product: group by role with role-specific header
+      for(let [role,titles] of Object.entries(structure[top])){
+        let header=ROLE_HEADERS[role]||('NEW FOR '+role.toUpperCase());
+        lines.push(header+':');
+        for(let t of titles)lines.push('- '+t);
+        lines.push('');
+      }
+    }
+  }
+  let text=lines.join('\n').trim();
+  document.getElementById('rn-modal-title').textContent=ver.name+' — Release Notes';
+  document.getElementById('rn-output').value=text;
+  document.getElementById('rn-modal-overlay').classList.add('open');
+}
+
+function closeRnModal(){document.getElementById('rn-modal-overlay').classList.remove('open');}
+
+function populateTargetVerSelect(selectedId){
+  let sel=document.getElementById('f-targetver');
+  sel.innerHTML='<option value="">None</option>';
+  for(let v of versions){
+    let opt=document.createElement('option');
+    opt.value=v.id;opt.textContent=v.name;
+    if(v.id===selectedId)opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
+
+function updateNextVerBadge(){
+  let btn=document.getElementById('next-ver-btn');
+  if(!btn)return;
+  if(nextVerId){
+    let v=versions.find(x=>x.id===nextVerId);
+    if(v){btn.textContent='Next: '+v.name;btn.style.display='';}
+    else{nextVerId=null;btn.style.display='none';}
+  } else {
+    btn.style.display='none';
+  }
+}
+
+function setNextVer(id){
+  nextVerId=id;saveData();updateNextVerBadge();
+  let v=versions.find(x=>x.id===id);showToast((v?v.name:'Version')+' set as next version');
+  renderContent(selectedNode);
+}
+
+function openNextVerFeed(){
+  if(!nextVerId){showToast('No next version set. Go to Versions to set one.');return;}
+  nvGroupOpen={};
+  nvSearchQuery='';
+  selectedNode='nv:feed';
+  renderSidebar();
+  renderNextVerFeed();
+}
+
+function renderNextVerFeed(){
+  let content=document.getElementById('content');
+  if(!nextVerId){content.innerHTML='<p class="empty">No next version set.</p>';return;}
+  let ver=versions.find(v=>v.id===nextVerId);
+  if(!ver){content.innerHTML='<p class="empty">Next version not found.</p>';return;}
+  let targetItems=items.filter(i=>i.targetVersion===nextVerId);
+  let doneCount=targetItems.filter(i=>i.col==='Done').length;
+  let total=targetItems.length;
+  let pct=total>0?Math.round(doneCount/total*100):0;
+  const FEED_TOP=['product','backoffice','notifications','backend','content-strategy','content'];
+  const FEED_LABELS={
+    'product':'Product',
+    'backoffice':'Back office',
+    'notifications':'Notifications',
+    'backend':'Backend / Infrastructure',
+    'content-strategy':'Content Strategy',
+    'content':'Informative Content'
+  };
+  function getTopLevel(sectionId){
+    function search(nodes,id,top){for(let n of nodes){let t=top||n.id;if(n.id===id)return t;if(n.children){let f=search(n.children,id,t);if(f)return f;}}return null;}
+    return search(TREE,sectionId,null);
+  }
+  function getRoleLabel(sectionId){
+    function search(nodes,id,role){for(let n of nodes){let r=n.role||role;if(n.id===id)return r||'General';if(n.children){let f=search(n.children,id,r);if(f)return f;}}return null;}
+    return search(TREE,sectionId,null)||'General';
+  }
+  // Apply search filter
+  let q=nvSearchQuery.toLowerCase();
+  let displayItems=q
+    ? targetItems.filter(i=>i.title.toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q))
+    : targetItems;
+  let html=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+  <div class="section-title">${esc(ver.name)}</div>
+</div>
+<div class="section-path">${total} targeted item${total===1?'':'s'} · ${doneCount} done</div>
+<input class="search-box" style="width:100%;box-sizing:border-box;margin:10px 0 8px" placeholder="Search items in ${esc(ver.name)}..." value="${esc(nvSearchQuery)}" oninput="nvDoSearch(this.value)" />
+<div style="margin:0 0 4px;display:flex;align-items:center;gap:10px">
+  <div class="progress-bar-wrap" style="margin:0;flex:1"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+  <span style="font-size:12px;color:#888;white-space:nowrap;min-width:32px;text-align:right">${pct}%</span>
+</div>
+<div style="display:flex;gap:8px;margin:10px 0 1.5rem">
+  <button class="tb-btn" onclick="nvExpandAll()">expand all</button>
+  <button class="tb-btn" onclick="nvCollapseAll()">collapse all</button>
+</div>`;
+  if(total===0){
+    html+=`<p class="empty">No items have this version set as their target yet.<br>Open any item and set its Target Version to "${esc(ver.name)}" to track it here.</p>`;
+  } else if(displayItems.length===0){
+    html+=`<p class="empty">No items match your search.</p>`;
+  } else {
+    // Build structure from the filtered display set
+    let filteredStructure={};
+    for(let top of FEED_TOP)filteredStructure[top]={};
+    for(let item of displayItems){
+      let top=getTopLevel(item.section);
+      if(!top||!FEED_TOP.includes(top))top='product';
+      let role=getRoleLabel(item.section);
+      if(!filteredStructure[top][role])filteredStructure[top][role]=[];
+      filteredStructure[top][role].push(item);
+    }
+    for(let top of FEED_TOP){
+      let roles=filteredStructure[top];
+      if(!roles||Object.keys(roles).length===0)continue;
+      let totalInSection=Object.values(roles).reduce((s,a)=>s+a.length,0);
+      if(totalInSection===0)continue;
+      if(top==='product'){
+        html+=`<div class="nv-top-lbl">${FEED_LABELS[top]}</div>`;
+        for(let [role,ritems] of Object.entries(roles)){
+          if(!ritems.length)continue;
+          let gid='product__'+role;
+          let safeId=gid.replace(/[^a-zA-Z0-9_-]/g,'_');
+          let isOpen=q?true:!!nvGroupOpen[gid];
+          let roleColor=ROLE_COLORS[role]||null;
+          let dot=roleColor?`<span class="color-dot" style="background:${roleColor}"></span>`:'';
+          html+=`<div class="nv-group-hdr" onclick="nvToggleGroup('${gid}')">
+  <span style="font-size:10px;color:#aaa;margin-right:2px">${isOpen?'▾':'▸'}</span>
+  ${dot}<span style="font-size:13px;font-weight:500">${role}</span>
+  <span style="font-size:11px;color:#aaa;margin-left:auto">${ritems.length}</span>
+</div>
+<div id="nvg-${safeId}" style="display:${isOpen?'block':'none'};padding-left:8px">`;
+          for(let item of ritems)html+=renderFeedItem(item);
+          html+=`</div>`;
+        }
+      } else {
+        let gid=top;
+        let isOpen=q?true:!!nvGroupOpen[gid];
+        html+=`<div class="nv-group-hdr" onclick="nvToggleGroup('${gid}')">
+  <span style="font-size:10px;color:#aaa;margin-right:2px">${isOpen?'▾':'▸'}</span>
+  <span style="font-size:13px;font-weight:500">${FEED_LABELS[top]}</span>
+  <span style="font-size:11px;color:#aaa;margin-left:auto">${totalInSection}</span>
+</div>
+<div id="nvg-${gid}" style="display:${isOpen?'block':'none'};padding-left:8px">`;
+        let roleKeys=Object.keys(roles);
+        for(let role of roleKeys){
+          let ritems=roles[role];
+          if(!ritems.length)continue;
+          if(roleKeys.length>1||role!=='General'){
+            html+=`<div style="font-size:11px;color:#aaa;padding:6px 0 2px;font-weight:500">${role}</div>`;
+          }
+          for(let item of ritems)html+=renderFeedItem(item);
+        }
+        html+=`</div>`;
+      }
+    }
+  }
+  content.innerHTML=html;
+}
+
+function renderFeedItem(item){
+  let isDone=item.col==='Done';
+  let path=getPathString(item.section);
+  return `<div class="feed-item" onclick="openEdit('${item.id}')">
+<div class="feed-check ${isDone?'done':''}">${isDone?'✓':''}</div>
+<div style="flex:1;min-width:0;overflow:hidden">
+  <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.title)}</div>
+  ${path?`<div style="font-size:11px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${path}</div>`:''}
+</div>
+<span class="badge ${isDone?'pri-low':'badge-assignee'}" style="flex-shrink:0;align-self:center;margin-left:8px">${isDone?'Done':'Not Done'}</span>
+</div>`;
+}
+
+function nvToggleGroup(gid){
+  nvGroupOpen[gid]=!nvGroupOpen[gid];
+  renderNextVerFeed();
+}
+
+function nvExpandAll(){
+  if(!nextVerId)return;
+  const FEED_TOP=['product','backoffice','notifications','backend','content-strategy','content'];
+  function getTopLevel(sectionId){
+    function search(nodes,id,top){for(let n of nodes){let t=top||n.id;if(n.id===id)return t;if(n.children){let f=search(n.children,id,t);if(f)return f;}}return null;}
+    return search(TREE,sectionId,null);
+  }
+  function getRoleLabel(sectionId){
+    function search(nodes,id,role){for(let n of nodes){let r=n.role||role;if(n.id===id)return r||'General';if(n.children){let f=search(n.children,id,r);if(f)return f;}}return null;}
+    return search(TREE,sectionId,null)||'General';
+  }
+  for(let item of items.filter(i=>i.targetVersion===nextVerId)){
+    let top=getTopLevel(item.section)||'product';
+    if(!FEED_TOP.includes(top))top='product';
+    nvGroupOpen[top==='product'?('product__'+getRoleLabel(item.section)):top]=true;
+  }
+  renderNextVerFeed();
+}
+
+function nvCollapseAll(){nvGroupOpen={};renderNextVerFeed();}
+
+function nvDoSearch(q){nvSearchQuery=q;renderNextVerFeed();}
+
+function closeNextVerFeed(){
+  if(selectedNode==='nv:feed'){
+    selectedNode=null;
+    document.getElementById('content').innerHTML='<p class="empty">Select a section</p>';
+  }
+}
+
+function copyReleaseNotes(){
+  let ta=document.getElementById('rn-output');
+  ta.select();
+  try{navigator.clipboard.writeText(ta.value).then(()=>showToast('Copied to clipboard'));}
+  catch(e){document.execCommand('copy');showToast('Copied to clipboard');}
+}
+
 function expandAll(){
   function setOpen(nodes){for(let n of nodes){openNodes[n.id]=true;if(n.children)setOpen(n.children);}}
   setOpen(TREE);saveData();renderSidebar();
@@ -965,9 +1564,10 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),3000);
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVerModal();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVerModal();closeRnModal();closeNextVerFeed();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 document.getElementById('ver-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('ver-modal-overlay'))closeVerModal();});
+document.getElementById('rn-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('rn-modal-overlay'))closeRnModal();});
 document.getElementById('f-section').addEventListener('change',updateColSelect);
 </script>
 </body>
