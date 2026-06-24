@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PassionStocks Roadmap</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+input,select,textarea,button{font-family:inherit}
+
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f3}
+.gate-box{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:2rem;width:340px}
+.gate-logo{font-family:monospace;font-size:20px;font-weight:500;margin-bottom:1.5rem}
+.gate-sub{font-size:13px;color:#666;margin-bottom:1.5rem}
+.pw-wrap{position:relative;margin-bottom:1rem}
+.pw-wrap input{width:100%;padding:8px 36px 8px 12px;border:0.5px solid rgba(0,0,0,0.25);border-radius:8px;font-size:14px;background:#f5f5f3}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;font-size:14px;padding:2px}
+.gate-btn{width:100%;padding:9px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer}
+.gate-err{font-size:13px;color:#a32d2d;margin-top:8px;display:none}
+
+#app{display:none;min-height:100vh;flex-direction:column}
+.topbar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.1);padding:0 1rem;height:48px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-family:monospace;font-size:15px;font-weight:500;margin-right:4px}
+.topbar-badge{font-size:11px;background:#f5f5f3;border:0.5px solid rgba(0,0,0,0.1);border-radius:20px;padding:2px 8px;color:#888}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tb-btn{padding:5px 10px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;background:none;font-size:12px;cursor:pointer;color:#1a1a1a}
+.tb-btn:hover{background:#f5f5f3}
+.search-box{padding:5px 10px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;background:#f5f5f3;font-size:12px;width:180px}
+
+.main{display:flex;flex:1;overflow:auto}
+.sidebar{width:280px;min-width:280px;border-right:0.5px solid rgba(0,0,0,0.1);background:#fff;overflow-y:auto;padding:8px 0}
+.content{flex:1;overflow-y:auto;padding:1.5rem}
+
+.tree-item{display:flex;align-items:center;gap:4px;padding:4px 8px 4px 0;cursor:pointer;user-select:none;border-radius:4px;position:relative}
+.tree-item:hover{background:#f5f5f3}
+.tree-item.active{background:#f5f5f3}
+.tree-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa;flex-shrink:0}
+.tree-label{font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-count{font-size:10px;padding:1px 5px;border-radius:10px;background:#7F77DD;color:#fff;min-width:16px;text-align:center}
+.tree-count.done{background:#3B6D11;color:#fff}
+.tree-add{font-size:11px;color:#aaa;padding:1px 6px;border:0.5px solid rgba(0,0,0,0.15);border-radius:10px;display:none;background:none;cursor:pointer}
+.tree-item:hover .tree-add{display:block}
+.tree-children{display:none}
+.tree-children.open{display:block}
+
+.col-header{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;padding:4px 0}
+.col-wrap{display:flex;gap:12px;margin-bottom:1.5rem}
+.col{flex:1;min-width:0}
+.col-cards{min-height:60px}
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:12px;margin-bottom:8px}
+.card-title{font-size:13px;font-weight:500;margin-bottom:4px}
+.card-desc{font-size:12px;color:#666;margin-bottom:8px;line-height:1.5}
+.card-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:8px}
+.badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.pri-high{background:#FCEBEB;color:#A32D2D}
+.pri-med{background:#FAEEDA;color:#854F0B}
+.pri-low{background:#EAF3DE;color:#3B6D11}
+.badge-roadmap{background:#EEEDFE;color:#534AB7}
+.badge-assignee{background:#f5f5f3;color:#666;border:0.5px solid rgba(0,0,0,0.12)}
+.card-actions{display:flex;gap:4px;flex-wrap:wrap}
+.ca-btn{font-size:11px;padding:3px 8px;border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;background:none;cursor:pointer}
+.ca-btn:hover{background:#f5f5f3}
+.ca-btn.done-btn{background:#EAF3DE;color:#3B6D11;border-color:#C0DD97}
+
+.section-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.section-path{font-size:12px;color:#888;margin-bottom:1.5rem}
+
+.ver-group{margin-bottom:1.5rem}
+.ver-group-title{font-size:12px;color:#888;font-weight:500;margin-bottom:8px;padding-bottom:4px;border-bottom:0.5px solid rgba(0,0,0,0.1)}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1.5rem;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:1.25rem}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;font-size:13px;background:#f5f5f3}
+.form-row textarea{min-height:72px;resize:vertical}
+.form-check{display:flex;align-items:center;gap:8px;font-size:13px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem}
+.btn-primary{padding:7px 16px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500}
+.btn-secondary{padding:7px 16px;background:none;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;font-size:13px;cursor:pointer}
+
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+.empty{font-size:12px;color:#aaa;padding:12px 0}
+.ver-active-badge{font-size:10px;background:#EAF3DE;color:#3B6D11;padding:2px 7px;border-radius:10px;margin-left:6px}
+.ver-set-btn{font-size:11px;padding:2px 8px;border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;background:none;cursor:pointer;color:#888}
+.ver-add-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;border:0.5px dashed rgba(0,0,0,0.2);border-radius:8px;background:none;cursor:pointer;color:#888;font-size:13px;width:100%;margin-top:8px}
+.color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;margin-right:4px}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-logo">PassionStocks</div>
+    <div class="gate-sub">Product roadmap — team access</div>
+    <div class="pw-wrap">
+      <input type="password" id="pw-input" placeholder="Enter password" />
+      <button class="pw-toggle" onclick="togglePw()">show</button>
+    </div>
+    <button class="gate-btn" onclick="tryLogin()">Enter</button>
+    <div class="gate-err" id="gate-err">Incorrect password</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">PassionStocks</span>
+    <span class="topbar-badge" id="upd-badge">syncing...</span>
+    <input class="search-box" id="search-inp" placeholder="Search items..." oninput="doSearch(this.value)" />
+    <div class="topbar-right">
+      <button class="tb-btn" onclick="expandAll()">expand all</button>
+      <button class="tb-btn" onclick="collapseAll()">collapse all</button>
+      <button class="tb-btn" onclick="logout()">lock</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <h2 id="modal-title">Add item</h2>
+    <div class="form-row"><label>Title</label><input id="f-title" type="text" /></div>
+    <div class="form-row"><label>Description</label><textarea id="f-desc"></textarea></div>
+    <div class="form-row"><label>Section</label><select id="f-section"></select></div>
+    <div class="form-row"><label>Column</label><select id="f-col"></select></div>
+    <div class="form-row"><label>Priority</label>
+      <select id="f-pri"><option value="High">High</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select>
+    </div>
+    <div class="form-row"><label>Assignee</label><input id="f-assignee" type="text" placeholder="Name or initials" /></div>
+    <div class="form-row"><label>Target date</label><input id="f-date" type="date" /></div>
+    <div class="form-row"><label class="form-check"><input type="checkbox" id="f-roadmap" /> <span>Flag as roadmap / planned</span></label></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ver-modal-overlay">
+  <div class="modal">
+    <h2>New version</h2>
+    <div class="form-row"><label>Version name</label><input id="ver-name-inp" type="text" placeholder="e.g. Beta 2, V1.0, Alpha" /></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeVerModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveVersion()">Create & set active</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PASS = 'PassionStocks2026';
+let authed = false;
+let items = [];
+let versions = [];
+let activeVerId = null;
+let openNodes = {};
+let selectedNode = null;
+let editingId = null;
+let syncTimer = null;
+let lastUpd = null;
+
+const ROLE_COLORS = {
+  'Basic / Buyer':'#888780','Creator':'#3B6D11','Agency':'#534AB7','Manager':'#0F6E56',
+  'Cross-seller':'#D85A30','Legal & Financial':'#185FA5','Business':'#BA7517','Nonprofit':'#D4537E'
+};
+
+const TREE = [
+  {id:'product',label:'Product',children:[
+    {id:'buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
+      {id:'buyer-signup',label:'Sign up / Log in',leaf:true,colType:'standard'},
+      {id:'buyer-profile',label:'Profile',leaf:true,colType:'standard'},
+      {id:'buyer-ai',label:'AI marketplace',leaf:true,colType:'standard'},
+      {id:'buyer-wallet',label:'Wallet',leaf:true,colType:'standard'},
+      {id:'buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'standard'},
+      {id:'buyer-sub',label:'Subscription',leaf:true,colType:'buyer-sub'},
+    ]},
+    {id:'creator',label:'Creator',role:'Creator',children:[
+      {id:'creator-hub',label:'Personal brand asset hub',leaf:true,colType:'standard'},
+      {id:'creator-sub',label:'Subscription',children:[
+        {id:'creator-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'creator-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'creator-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'creator-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'creator-role',label:'Role-specific features',children:[
+          {id:'creator-val',label:'Valuation strategy meeting',leaf:true,colType:'tier'},
+          {id:'creator-shc',label:'Shoutout controls',leaf:true,colType:'tier'},
+          {id:'creator-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+          {id:'creator-crs',label:'Cross-sellers',leaf:true,colType:'tier'},
+          {id:'creator-bvg',label:'Brand & valuation growth',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'agency',label:'Agency',role:'Agency',children:[
+      {id:'agency-hub',label:'Personal brand agency hub',leaf:true,colType:'standard'},
+      {id:'agency-sub',label:'Subscription',children:[
+        {id:'agency-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'agency-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'agency-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'agency-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'agency-role',label:'Role-specific features',children:[
+          {id:'agency-seats',label:'Seats',leaf:true,colType:'tier'},
+          {id:'agency-val',label:'Valuation strategy meeting',leaf:true,colType:'tier'},
+          {id:'agency-shc',label:'Shoutout controls roster-wide',leaf:true,colType:'tier'},
+          {id:'agency-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'manager',label:'Manager',role:'Manager',children:[
+      {id:'mgr-hub',label:'Personal brand agency hub',leaf:true,colType:'standard'},
+      {id:'mgr-profile',label:'My Manager Profile',leaf:true,colType:'standard'},
+      {id:'mgr-creators',label:'Creators Hub',leaf:true,colType:'standard'},
+      {id:'mgr-team',label:'Agency Team',leaf:true,colType:'standard'},
+      {id:'mgr-sub',label:'Subscription',children:[
+        {id:'mgr-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'mgr-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'mgr-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'mgr-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'mgr-role',label:'Role-specific features',children:[
+          {id:'mgr-seats',label:'Seats',leaf:true,colType:'tier'},
+          {id:'mgr-val',label:'Valuation strategy meeting',leaf:true,colType:'tier'},
+          {id:'mgr-shc',label:'Shoutout controls roster-wide',leaf:true,colType:'tier'},
+          {id:'mgr-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'xseller',label:'Cross-seller',role:'Cross-seller',children:[
+      {id:'xs-sub',label:'Subscription',children:[
+        {id:'xs-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'xs-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'xs-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'xs-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'xs-role',label:'Role-specific features',children:[
+          {id:'xs-slots',label:'Creator slots',leaf:true,colType:'tier'},
+          {id:'xs-sales',label:'Sales tools',leaf:true,colType:'tier'},
+          {id:'xs-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'legal',label:'Legal & Financial',role:'Legal & Financial',children:[
+      {id:'legal-sub',label:'Subscription',children:[
+        {id:'legal-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'legal-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'legal-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'legal-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'legal-role',label:'Role-specific features',children:[
+          {id:'legal-lead',label:'Lead generation',leaf:true,colType:'tier'},
+          {id:'legal-cli',label:'Client management',leaf:true,colType:'tier'},
+          {id:'legal-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'business',label:'Business',role:'Business',children:[
+      {id:'biz-sub',label:'Subscription',children:[
+        {id:'biz-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'biz-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'biz-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'biz-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'biz-role',label:'Role-specific features',children:[
+          {id:'biz-shp',label:'Shoutout purchasing',leaf:true,colType:'tier'},
+          {id:'biz-crp',label:'Creator partnerships',leaf:true,colType:'tier'},
+          {id:'biz-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+    {id:'nonprofit',label:'Nonprofit',role:'Nonprofit',children:[
+      {id:'np-sub',label:'Subscription',children:[
+        {id:'np-ver',label:'Verification',leaf:true,colType:'tier'},
+        {id:'np-com',label:'Commission window',leaf:true,colType:'tier'},
+        {id:'np-aic',label:'AI agent credits',leaf:true,colType:'tier'},
+        {id:'np-aia',label:'AI agent capabilities',leaf:true,colType:'tier'},
+        {id:'np-role',label:'Role-specific features',children:[
+          {id:'np-cause',label:'Cause listing',leaf:true,colType:'tier'},
+          {id:'np-rev',label:'Revenue & payouts',leaf:true,colType:'tier'},
+          {id:'np-camp',label:'Campaign tools',leaf:true,colType:'tier'},
+          {id:'np-ana',label:'Analytics & reporting',leaf:true,colType:'tier'},
+        ]}
+      ]}
+    ]},
+  ]},
+  {id:'backoffice',label:'Back office',children:[
+    {id:'bo-dashboard',label:'Dashboard',leaf:true,colType:'standard'},
+    {id:'bo-users',label:'Users',leaf:true,colType:'standard'},
+    {id:'bo-portfolio',label:'Portfolio',leaf:true,colType:'standard'},
+    {id:'bo-notifications',label:'Notifications',leaf:true,colType:'standard'},
+    {id:'bo-waitlists',label:'Waitlists',leaf:true,colType:'standard'},
+    {id:'bo-payment',label:'Payment Portal',leaf:true,colType:'standard'},
+    {id:'bo-platform',label:'Platform Settings',leaf:true,colType:'standard'},
+    {id:'bo-bugs',label:'Bug Reports',leaf:true,colType:'standard'},
+    {id:'bo-agency',label:'Agency Structure',leaf:true,colType:'standard'},
+  ]},
+  {id:'notifications',label:'Notifications',children:[
+    {id:'notif-buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
+      {id:'nb-app',label:'App notifications',children:[
+        {id:'nb-signup',label:'Sign up / Log in',leaf:true,colType:'notif'},
+        {id:'nb-profile',label:'Profile',leaf:true,colType:'notif'},
+        {id:'nb-ai',label:'AI marketplace',leaf:true,colType:'notif'},
+        {id:'nb-wallet',label:'Wallet',leaf:true,colType:'notif'},
+        {id:'nb-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'notif'},
+        {id:'nb-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nb-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-creator',label:'Creator',role:'Creator',children:[
+      {id:'nc-app',label:'App notifications',children:[
+        {id:'nc-hub',label:'Personal brand asset hub',leaf:true,colType:'notif'},
+        {id:'nc-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nc-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-agency',label:'Agency',role:'Agency',children:[
+      {id:'na-app',label:'App notifications',children:[
+        {id:'na-hub',label:'Personal brand agency hub',leaf:true,colType:'notif'},
+        {id:'na-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'na-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-mgr',label:'Manager',role:'Manager',children:[
+      {id:'nm-app',label:'App notifications',children:[
+        {id:'nm-hub',label:'Agency Hub',leaf:true,colType:'notif'},
+        {id:'nm-creators',label:'Creators Hub',leaf:true,colType:'notif'},
+        {id:'nm-team',label:'Agency Team',leaf:true,colType:'notif'},
+        {id:'nm-profile',label:'My Manager Profile',leaf:true,colType:'notif'},
+      ]},
+      {id:'nm-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-xs',label:'Cross-seller',role:'Cross-seller',children:[
+      {id:'nxs-app',label:'App notifications',children:[
+        {id:'nxs-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nxs-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-legal',label:'Legal & Financial',role:'Legal & Financial',children:[
+      {id:'nl-app',label:'App notifications',children:[
+        {id:'nl-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nl-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-biz',label:'Business',role:'Business',children:[
+      {id:'nbiz-app',label:'App notifications',children:[
+        {id:'nbiz-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nbiz-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+    {id:'notif-np',label:'Nonprofit',role:'Nonprofit',children:[
+      {id:'nnp-app',label:'App notifications',children:[
+        {id:'nnp-sub',label:'Subscription',leaf:true,colType:'notif'},
+      ]},
+      {id:'nnp-mkt',label:'Marketing',leaf:true,colType:'notif'},
+    ]},
+  ]},
+  {id:'content',label:'Content',children:[
+    {id:'cnt-buyer',label:'Basic / Buyer',role:'Basic / Buyer',children:[
+      {id:'cnt-buyer-signup',label:'Sign up / Log in',leaf:true,colType:'content'},
+      {id:'cnt-buyer-profile',label:'Profile',leaf:true,colType:'content'},
+      {id:'cnt-buyer-ai',label:'AI marketplace',leaf:true,colType:'content'},
+      {id:'cnt-buyer-wallet',label:'Wallet',leaf:true,colType:'content'},
+      {id:'cnt-buyer-shoutout',label:'Shoutout / Portfolio',leaf:true,colType:'content'},
+      {id:'cnt-buyer-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-creator',label:'Creator',role:'Creator',children:[
+      {id:'cnt-creator-hub',label:'Personal brand asset hub',leaf:true,colType:'content'},
+      {id:'cnt-creator-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-agency',label:'Agency',role:'Agency',children:[
+      {id:'cnt-agency-hub',label:'Agency hub',leaf:true,colType:'content'},
+      {id:'cnt-agency-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-manager',label:'Manager',role:'Manager',children:[
+      {id:'cnt-mgr-hub',label:'Agency Hub dashboard',leaf:true,colType:'content'},
+      {id:'cnt-mgr-profile',label:'My Manager Profile',leaf:true,colType:'content'},
+      {id:'cnt-mgr-creators',label:'Creators Hub',leaf:true,colType:'content'},
+      {id:'cnt-mgr-team',label:'Agency Team',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-xseller',label:'Cross-seller',role:'Cross-seller',children:[
+      {id:'cnt-xs-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-legal',label:'Legal & Financial',role:'Legal & Financial',children:[
+      {id:'cnt-legal-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-business',label:'Business',role:'Business',children:[
+      {id:'cnt-biz-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+    {id:'cnt-nonprofit',label:'Nonprofit',role:'Nonprofit',children:[
+      {id:'cnt-np-sub',label:'Subscription',leaf:true,colType:'content'},
+    ]},
+  ]},
+  {id:'versions',label:'Versions',special:'versions'},
+];
+
+const COL_TYPES = {
+  'standard':['To Do','In Progress','Done'],
+  'tier':['Tier 1','Tier 2','Tier 3'],
+  'buyer-sub':['Shoutout wall recognition','Pay-as-you-go credits','Buyer tools'],
+  'notif':['In-app','Push','Email','SMS'],
+  'content':['Social Media','FAQ','Announcement','Done'],
+};
+
+function getColumns(colType){return COL_TYPES[colType]||COL_TYPES['standard']}
+
+function getAllLeaves(tree,path){
+  let out=[];
+  for(let n of tree){
+    let p=[...path,n.label];
+    if(n.leaf){out.push({id:n.id,label:n.label,path:p,colType:n.colType})}
+    if(n.children){out=out.concat(getAllLeaves(n.children,p))}
+  }
+  return out;
+}
+let ALL_LEAVES=getAllLeaves(TREE,[]);
+
+function getPathString(nodeId){
+  let leaf=ALL_LEAVES.find(l=>l.id===nodeId);
+  return leaf?leaf.path.join(' › '):'';
+}
+
+function findNode(tree,id){
+  for(let n of tree){
+    if(n.id===id)return n;
+    if(n.children){let f=findNode(n.children,id);if(f)return f;}
+  }
+  return null;
+}
+
+function getNodeRole(id){
+  function search(tree,id,role){
+    for(let n of tree){
+      let r=n.role||role;
+      if(n.id===id)return r;
+      if(n.children){let f=search(n.children,id,r);if(f!==undefined)return f;}
+    }
+    return undefined;
+  }
+  return search(TREE,id,null);
+}
+
+function countItems(nodeId){
+  let leaf=ALL_LEAVES.find(l=>l.id===nodeId);
+  if(leaf)return items.filter(i=>i.section===nodeId).length;
+  let children=getChildLeaves(nodeId);
+  return items.filter(i=>children.includes(i.section)).length;
+}
+
+function countDone(nodeId){
+  let leaf=ALL_LEAVES.find(l=>l.id===nodeId);
+  if(leaf)return items.filter(i=>i.section===nodeId&&i.col==='Done').length;
+  let children=getChildLeaves(nodeId);
+  return items.filter(i=>children.includes(i.section)&&i.col==='Done').length;
+}
+
+function getChildLeaves(nodeId){
+  let node=findNode(TREE,nodeId);
+  if(!node)return[];
+  if(node.leaf)return[nodeId];
+  function collect(n){let o=[];if(n.leaf)return[n.id];if(n.children){for(let c of n.children)o=o.concat(collect(c));}return o;}
+  return collect(node);
+}
+
+// Local storage fallback for standalone file
+const localStore = {
+  data: {},
+  get(key){ return this.data[key]?{value:this.data[key]}:null; },
+  set(key,val){ this.data[key]=val; try{localStorage.setItem('ps_'+key,val);}catch(e){} return {key,value:val}; },
+  delete(key){ delete this.data[key]; try{localStorage.removeItem('ps_'+key);}catch(e){}; return {deleted:true}; },
+  list(prefix){ return {keys:Object.keys(this.data).filter(k=>!prefix||k.startsWith(prefix))}; },
+  load(){
+    try{
+      for(let k of ['ps-items','ps-versions','ps-activeVer','ps-open','ps-upd']){
+        let v=localStorage.getItem('ps_'+k);
+        if(v)this.data[k]=v;
+      }
+    }catch(e){}
+  }
+};
+
+const storage = (typeof window.storage !== 'undefined') ? window.storage : {
+  get: async(k)=>localStore.get(k),
+  set: async(k,v)=>localStore.set(k,v),
+  delete: async(k)=>localStore.delete(k),
+  list: async(p)=>localStore.list(p),
+};
+
+function togglePw(){
+  let inp=document.getElementById('pw-input');
+  let btn=document.querySelector('.pw-toggle');
+  if(inp.type==='password'){inp.type='text';btn.textContent='hide';}
+  else{inp.type='password';btn.textContent='show';}
+}
+
+function tryLogin(){
+  let v=document.getElementById('pw-input').value;
+  if(v===PASS){
+    authed=true;
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp();
+  } else {
+    document.getElementById('gate-err').style.display='block';
+  }
+}
+
+document.getElementById('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+function logout(){authed=false;document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';}
+
+async function initApp(){
+  localStore.load();
+  await loadData();
+  if(items.length===0){
+    const bid='beta';
+    const ts=Date.now();
+    items=[
+      // ── PRODUCT › Basic / Buyer ──
+      {id:'s-b-01',title:'Sign up / Log in',desc:'User registration and login flow.',section:'buyer-signup',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-02',title:'Profile page',desc:'Basic profile showing name, handle, and link to AI Marketplace.',section:'buyer-profile',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-03',title:'AI Marketplace — Shoutouts',desc:'Browse and quick-buy shoutout units from creators. Shows price, units sold recently, quantity selector.',section:'buyer-ai',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-04',title:'AI Marketplace — Perks',desc:'Perks tab with search by personal brand, niche, or perk.',section:'buyer-ai',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-05',title:'Wallet',desc:'Est. Net Worth, Available Balance, Projected Sales Potential, Withdraw & Deposit, pending funds (bought & sold), full transaction history.',section:'buyer-wallet',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-06',title:'Shoutouts Portfolio',desc:'Total spent, total shoutout value, value change %, est. total impact. Portfolio table: personal brand, units bought, shoutout price, total value, avg cost. My Shoutout Tracker.',section:'buyer-shoutout',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-07',title:'Personal Brand IPO Index',desc:'Ranked leaderboard of creators by brand worth and shoutout unit price. Accessible from buyer sidebar.',section:'buyer-shoutout',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-b-08',title:'In-app notifications',desc:'Live in-app notifications — e.g. Trade Successful, Deposit Successful.',section:'buyer-signup',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Creator ──
+      {id:'s-c-01',title:'Asset Profile (own view)',desc:'Creator\'s own public profile: bio, niches, location, lexicon, total followers, buyers/buys/following/followers. "Complete Your Profile" CTA, connect socials button.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-c-02',title:'Asset Profile (public view)',desc:'Public visitor view: est. brand worth range, IPO readiness progress bar toward $1B, "Would You Invest In Me" comment section.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-c-03',title:'Personal Brand Hub',desc:'3-step journey banner (Sell / Sell More / Keep Selling). Brand worth range, IPO readiness progress. Four AI agent score gauges: Brand Understanding, Execution Readiness, Investability, Insurability. Action cards: Pricing strategy, Create a strategic perk, Post to socials, Invite fans & businesses, Work with an agency.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-c-04',title:'AI Marketplace access',desc:'Creators can browse and buy from the same marketplace (Shoutouts + Perks tabs).',section:'creator-hub',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-c-05',title:'Shoutouts Portfolio',desc:'Same portfolio tracker as buyer for cross-buy shoutouts.',section:'creator-hub',col:'Done',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-c-06',title:'Wallet',desc:'Est. Net Worth includes personal brand valuation. Available balance, projected sales potential, withdraw/deposit, transactions.',section:'creator-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Agency ──
+      {id:'s-a-01',title:'Agency Profile',desc:'Public agency page: name, handle, founding year, niches, specialties, admin. Stats: est. portfolio worth, management score, IPO readiness %, brand assets on platform, creators managed, agency managers. Agency Performance: total brand valuation, total revenue, avg revenue, total followers under management. Preview Search Card.',section:'agency-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── PRODUCT › Manager ──
+      {id:'s-m-01',title:'Agency Hub dashboard',desc:'Total personal brand valuation created, active creators under management (verified/unverified), agency team members count. Top performing creators list with brand worth. Top contributing managers to IPO progress ranked leaderboard with % contribution.',section:'mgr-hub',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-m-02',title:'Creators Hub',desc:'Roster management: Active/Applications/Invites tabs, My Creators vs Agency Creators views, search by name/username/email, table with creator/worth/setup/actions. Add Creator button.',section:'mgr-creators',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-m-03',title:'Agency Team',desc:'Members/Applications/Invites tabs. Team table: manager name, role (Manager/Admin), email, date added, permissions count. Invite Team Members button.',section:'mgr-team',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-m-04',title:'My Manager Profile',desc:'Manager card: handle, name, agency affiliation, role badge, join date, agency niches, IPO contribution gauge. Updates & Actions section. Performance stats: creators managed, est. valuation added, revenue generated, commission earned, units sold.',section:'mgr-profile',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      // ── CONTENT (Beta features to-dos) ──
+      {id:'cnt-s-01',title:'Sign up / Log in',desc:'Create content for Sign up / Log in feature release.',section:'cnt-buyer-signup',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-02',title:'Profile page',desc:'Create content for Profile page feature release.',section:'cnt-buyer-profile',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-03',title:'AI Marketplace — Shoutouts',desc:'Create content for AI Marketplace Shoutouts feature release.',section:'cnt-buyer-ai',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-04',title:'AI Marketplace — Perks',desc:'Create content for AI Marketplace Perks feature release.',section:'cnt-buyer-ai',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-05',title:'Wallet',desc:'Create content for Wallet feature release.',section:'cnt-buyer-wallet',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-06',title:'Shoutouts Portfolio',desc:'Create content for Shoutouts Portfolio feature release.',section:'cnt-buyer-shoutout',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-07',title:'Personal Brand IPO Index',desc:'Create content for Personal Brand IPO Index feature release.',section:'cnt-buyer-shoutout',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-08',title:'In-app notifications',desc:'Create content for In-app notifications feature release.',section:'cnt-buyer-signup',col:'Social Media',priority:'Medium',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-09',title:'Asset Profile (own + public view)',desc:'Create content for Creator Asset Profile feature release.',section:'cnt-creator-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-10',title:'Personal Brand Hub',desc:'Create content for Personal Brand Hub feature release — 3-step journey, AI scores, action cards.',section:'cnt-creator-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-11',title:'Agency Profile',desc:'Create content for Agency Profile feature release.',section:'cnt-agency-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-12',title:'Agency Hub dashboard',desc:'Create content for Agency Hub dashboard feature release.',section:'cnt-mgr-hub',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-13',title:'Creators Hub',desc:'Create content for Creators Hub feature release.',section:'cnt-mgr-creators',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-14',title:'Agency Team',desc:'Create content for Agency Team feature release.',section:'cnt-mgr-team',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      {id:'cnt-s-15',title:'My Manager Profile',desc:'Create content for My Manager Profile feature release.',section:'cnt-mgr-profile',col:'Social Media',priority:'High',assignee:'',date:'',roadmap:false,created:ts},
+      // ── BACK OFFICE ──
+      {id:'s-bo-01',title:'Dashboard',desc:'Dashboard Overview: Users section (active users, issuers/creators, managers, deactivated users, new users today, new users last 30 days). Financials (total platform balance, total portfolios, total assets held). Activity (shoutouts purchased today, refund requests open, top user by balance). Development Tools section (dev/demo only: fill DB, sanity check, reset DB).',section:'bo-dashboard',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-02',title:'Users',desc:'User Management: search by username/email/name, Create User button. Table: avatar, roles, verified status, username, name, email.',section:'bo-users',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-03',title:'Portfolio',desc:'Portfolio Snapshot: search by username/email/name. Table: user (avatar + handle + email), balance, assets (count of assets in X issuers, expandable).',section:'bo-portfolio',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-04',title:'Notifications',desc:'4 tabs: Send Notification (choose recipients: All Users, Investors, Issuers, Managers, Specific User — then compose), Send Email, In-App Templates, Email Templates.',section:'bo-notifications',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-05',title:'Waitlists',desc:'Beta Access Control toggle (globally enable/disable beta code requirement). Tabs: Leads, Invest In Me, Academy, Issuer Requests, Agency Registration. Table: email, status (Pending/etc), role, created date, beta access (uses + days + Send Beta Code button), Decline action.',section:'bo-waitlists',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-06',title:'Payment Portal',desc:'Stats: total records, pending, completed, total deposited. Tabs: Deposits, Withdrawals. Filters: All/Pending/Completed, search. Table: user, deposited amount, net, fee, created date, available on date, status.',section:'bo-payment',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-07',title:'Platform Settings',desc:'Manage social media platform icons and settings. List of platforms (YouTube, Facebook, Instagram, TikTok, etc.) with platform key, last updated date, Edit button. Create New Platform button.',section:'bo-platform',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-08',title:'Bug Reports',desc:'Bug Reports Management: monitor and manage user-reported bugs. Search by message content, filter by status. Table: ID, User, Message, Status, Created.',section:'bo-bugs',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+      {id:'s-bo-09',title:'Agency Structure',desc:'Select agency dropdown. Stats per agency: managers count, creators count, founders count, avg creators per manager. Tabs: Org Chart (visual hierarchy — Founder → Managers → Creators with buy fee %), Managers, Creators.',section:'bo-agency',col:'Done',priority:'High',assignee:'',date:'',roadmap:false,created:ts,doneInVer:bid},
+    ];
+    await saveData();
+  }
+  renderSidebar();
+  if(!selectedNode){let first=ALL_LEAVES[0];if(first)selectNode(first.id);}
+  startSync();
+}
+
+async function loadData(){
+  try{let r=await storage.get('ps-items');items=r?JSON.parse(r.value):[];}catch(e){items=[];}
+  try{let r=await storage.get('ps-versions');versions=r?JSON.parse(r.value):[{id:'beta',name:'Beta',created:Date.now()}];}catch(e){versions=[{id:'beta',name:'Beta',created:Date.now()}];}
+  try{let r=await storage.get('ps-activeVer');activeVerId=r?r.value:'beta';}catch(e){activeVerId='beta';}
+  try{let r=await storage.get('ps-open');openNodes=r?JSON.parse(r.value):{};}catch(e){openNodes={};}
+  try{let r=await storage.get('ps-upd');lastUpd=r?r.value:null;updateUpdBadge();}catch(e){}
+}
+
+async function saveData(){
+  let now=Date.now();
+  await storage.set('ps-items',JSON.stringify(items),true);
+  await storage.set('ps-versions',JSON.stringify(versions),true);
+  await storage.set('ps-activeVer',activeVerId,true);
+  await storage.set('ps-open',JSON.stringify(openNodes),true);
+  await storage.set('ps-upd',String(now),true);
+  lastUpd=String(now);
+  updateUpdBadge();
+}
+
+function updateUpdBadge(){
+  let el=document.getElementById('upd-badge');
+  if(!lastUpd){el.textContent='never synced';return;}
+  let d=new Date(parseInt(lastUpd));
+  el.textContent='updated '+d.toLocaleTimeString();
+}
+
+function startSync(){
+  if(syncTimer)clearInterval(syncTimer);
+  syncTimer=setInterval(async()=>{
+    try{
+      let r=await storage.get('ps-upd');
+      if(r&&r.value!==lastUpd){
+        await loadData();renderSidebar();if(selectedNode)renderContent(selectedNode);showToast('Roadmap updated');
+      }
+    }catch(e){}
+  },11000);
+}
+
+function renderSidebar(){
+  let sb=document.getElementById('sidebar');
+  sb.innerHTML='';
+  sb.appendChild(renderTree(TREE,0));
+}
+
+function renderTree(nodes,depth){
+  let frag=document.createDocumentFragment();
+  for(let n of nodes){
+    let wrap=document.createElement('div');
+    let isOpen=openNodes[n.id];
+    let cnt=n.special==='versions'?versions.length:countItems(n.id);
+    let dneCnt=n.special!=='versions'?countDone(n.id):0;
+    let hasChildren=n.children||n.special==='versions';
+    let row=document.createElement('div');
+    row.className='tree-item'+(selectedNode===n.id?' active':'');
+    row.style.paddingLeft=(8+depth*14)+'px';
+    let dot=n.role&&ROLE_COLORS[n.role]?`<span class="color-dot" style="background:${ROLE_COLORS[n.role]}"></span>`:'';
+    let toggleEl=hasChildren?`<span class="tree-toggle">${isOpen?'▾':'▸'}</span>`:`<span class="tree-toggle"></span>`;
+    let countHtml='';
+    if(cnt>0)countHtml+=`<span class="tree-count">${cnt}</span>`;
+    if(dneCnt>0&&dneCnt!==cnt)countHtml+=`<span class="tree-count done">${dneCnt}✓</span>`;
+    let addBtn=n.leaf?`<button class="tree-add" onclick="event.stopPropagation();openAdd('${n.id}')">+ add</button>`:'';
+    row.innerHTML=`${toggleEl}${dot}<span class="tree-label">${n.label}</span>${countHtml}${addBtn}`;
+    row.addEventListener('click',()=>{
+      if(hasChildren){openNodes[n.id]=!isOpen;saveData();renderSidebar();}
+      selectNode(n.id);
+    });
+    wrap.appendChild(row);
+    if(hasChildren){
+      let childWrap=document.createElement('div');
+      childWrap.className='tree-children'+(isOpen?' open':'');
+      if(n.special==='versions'){childWrap.appendChild(renderVersionsTree());}
+      else if(n.children){childWrap.appendChild(renderTree(n.children,depth+1));}
+      wrap.appendChild(childWrap);
+    }
+    frag.appendChild(wrap);
+  }
+  return frag;
+}
+
+function renderVersionsTree(){
+  let frag=document.createDocumentFragment();
+  for(let v of versions){
+    let row=document.createElement('div');
+    row.className='tree-item'+(selectedNode==='ver:'+v.id?' active':'');
+    row.style.paddingLeft='36px';
+    let isActive=v.id===activeVerId;
+    let cnt=items.filter(i=>i.doneInVer===v.id).length;
+    row.innerHTML=`<span class="tree-toggle"></span><span class="tree-label">${v.name}</span>${isActive?'<span class="ver-active-badge">active</span>':''}<span class="tree-count done">${cnt}</span>`;
+    row.addEventListener('click',()=>selectNode('ver:'+v.id));
+    frag.appendChild(row);
+  }
+  return frag;
+}
+
+function selectNode(id){selectedNode=id;renderSidebar();renderContent(id);}
+
+function renderContent(id){
+  let content=document.getElementById('content');
+  if(id&&id.startsWith('ver:')){renderVersionContent(id.slice(4));return;}
+  let node=findNode(TREE,id);
+  if(!node){content.innerHTML='<p class="empty">Select a section</p>';return;}
+  if(node.special==='versions'){renderVersionsRoot();return;}
+  if(!node.leaf){content.innerHTML=`<div class="section-title">${node.label}</div><p style="font-size:13px;color:#888">Select a section below to view items.</p>`;return;}
+  let cols=getColumns(node.colType);
+  let path=getPathString(id);
+  let role=getNodeRole(id);
+  let roleColor=role&&ROLE_COLORS[role]?ROLE_COLORS[role]:null;
+  let dotHtml=roleColor?`<span class="color-dot" style="background:${roleColor}"></span>`:'';
+  let secItems=items.filter(i=>i.section===id);
+  let html=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">${dotHtml}<div class="section-title">${node.label}</div></div>
+<div class="section-path">${path}</div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="tb-btn" onclick="openAdd('${id}')">+ add item</button></div>
+<div class="col-wrap">`;
+  for(let col of cols){
+    let colItems=secItems.filter(i=>i.col===col);
+    html+=`<div class="col"><div class="col-header">${col} <span style="color:#aaa">(${colItems.length})</span></div><div class="col-cards">`;
+    if(colItems.length===0)html+=`<div class="empty">No items</div>`;
+    for(let item of colItems){
+      let priClass=item.priority==='High'?'pri-high':item.priority==='Low'?'pri-low':'pri-med';
+      let cols2=getColumns(node.colType);
+      let colIdx=cols2.indexOf(col);
+      let prevBtn=colIdx>0?`<button class="ca-btn" onclick="moveItem('${item.id}',-1)">← back</button>`:'';
+      let nextBtn=colIdx<cols2.length-1?`<button class="ca-btn" onclick="moveItem('${item.id}',1)">→ fwd</button>`:'';
+      let doneBtn=col!=='Done'?`<button class="ca-btn done-btn" onclick="markDone('${item.id}')">✓ done</button>`:'';
+      html+=`<div class="card">
+<div class="card-title">${esc(item.title)}</div>
+${item.desc?`<div class="card-desc">${esc(item.desc)}</div>`:''}
+<div class="card-meta">
+  <span class="badge ${priClass}">${item.priority}</span>
+  ${item.roadmap?'<span class="badge badge-roadmap">roadmap</span>':''}
+  ${item.assignee?`<span class="badge badge-assignee">${esc(item.assignee)}</span>`:''}
+  ${item.date?`<span style="font-size:11px;color:#aaa">${item.date}</span>`:''}
+</div>
+<div class="card-actions">
+  <button class="ca-btn" onclick="openEdit('${item.id}')">edit</button>
+  ${prevBtn}${nextBtn}${doneBtn}
+  <button class="ca-btn" style="color:#a32d2d" onclick="deleteItem('${item.id}')">delete</button>
+</div></div>`;
+    }
+    html+=`</div></div>`;
+  }
+  html+=`</div>`;
+  content.innerHTML=html;
+}
+
+function renderVersionsRoot(){
+  let ver=versions.find(v=>v.id===activeVerId);
+  let html=`<div class="section-title">Versions</div><div class="section-path">Active: ${ver?ver.name:'none'}</div><div style="margin:1rem 0">`;
+  for(let v of versions){
+    let isActive=v.id===activeVerId;
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.1)">
+<span style="font-size:14px;font-weight:500">${esc(v.name)}</span>
+${isActive?'<span class="ver-active-badge">active</span>':`<button class="ver-set-btn" onclick="setActiveVer('${v.id}')">set active</button>`}
+<span style="font-size:12px;color:#aaa;margin-left:auto">${items.filter(i=>i.doneInVer===v.id).length} items</span>
+</div>`;
+  }
+  html+=`</div><button class="ver-add-btn" onclick="openVerModal()">+ create new version</button>`;
+  document.getElementById('content').innerHTML=html;
+}
+
+function renderVersionContent(verId){
+  let ver=versions.find(v=>v.id===verId);
+  if(!ver){document.getElementById('content').innerHTML='';return;}
+  let verItems=items.filter(i=>i.doneInVer===verId);
+  let isActive=verId===activeVerId;
+  let html=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+<div class="section-title">${esc(ver.name)}</div>
+${isActive?'<span class="ver-active-badge">active</span>':`<button class="ver-set-btn" onclick="setActiveVer('${verId}')">set active</button>`}
+</div><div class="section-path">${verItems.length} completed items</div>`;
+  if(verItems.length===0){html+=`<p class="empty">No items completed in this version yet.</p>`;}
+  else{
+    // Group by top-level section (Product / Back office / Notifications), then by role/subsection
+    const TOP=['product','backoffice','notifications','content'];
+    const TOP_LABELS={'product':'Product','backoffice':'Back office','notifications':'Notifications','content':'Content'};
+    function getTopLevel(sectionId){
+      function search(nodes,id,top){
+        for(let n of nodes){
+          let t=top||n.id;
+          if(n.id===id)return t;
+          if(n.children){let f=search(n.children,id,t);if(f)return f;}
+        }
+        return null;
+      }
+      return search(TREE,sectionId,null);
+    }
+    function getRoleLabel(sectionId){
+      function search(nodes,id,role){
+        for(let n of nodes){
+          let r=n.role||role;
+          if(n.id===id)return r||'General';
+          if(n.children){let f=search(n.children,id,r);if(f)return f;}
+        }
+        return null;
+      }
+      return search(TREE,sectionId,null)||'General';
+    }
+    // Build structure: {product:{Creator:[items],Basic/Buyer:[items]}, backoffice:{General:[items]}, ...}
+    let structure={};
+    for(let top of TOP){structure[top]={};}
+    for(let item of verItems){
+      let top=getTopLevel(item.section)||'product';
+      let role=getRoleLabel(item.section);
+      if(!structure[top])structure[top]={};
+      if(!structure[top][role])structure[top][role]=[];
+      structure[top][role].push(item);
+    }
+    for(let top of TOP){
+      let roles=structure[top];
+      if(!roles||Object.keys(roles).length===0)continue;
+      html+=`<div style="margin-bottom:2rem">
+<div style="font-size:16px;font-weight:500;margin-bottom:1rem;padding-bottom:6px;border-bottom:0.5px solid rgba(0,0,0,0.15)">${TOP_LABELS[top]}</div>`;
+      for(let [role,ritems] of Object.entries(roles)){
+        let roleColor=ROLE_COLORS[role]||null;
+        let dot=roleColor?`<span class="color-dot" style="background:${roleColor}"></span>`:'';
+        html+=`<div class="ver-group">
+<div class="ver-group-title" style="display:flex;align-items:center;gap:6px">${dot}${role}</div>`;
+        for(let item of ritems){
+          let path=getPathString(item.section);
+          html+=`<div class="card">
+<div style="font-size:10px;color:#aaa;margin-bottom:4px">${path}</div>
+<div class="card-title">${esc(item.title)}</div>
+${item.desc?`<div class="card-desc">${esc(item.desc)}</div>`:''}
+<div class="card-meta"><span class="badge ${item.priority==='High'?'pri-high':item.priority==='Low'?'pri-low':'pri-med'}">${item.priority}</span>${item.assignee?`<span class="badge badge-assignee">${esc(item.assignee)}</span>`:''}</div>
+</div>`;
+        }
+        html+=`</div>`;
+      }
+      html+=`</div>`;
+    }
+  }
+  document.getElementById('content').innerHTML=html;
+}
+
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function openAdd(sectionId){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add item';
+  document.getElementById('f-title').value='';
+  document.getElementById('f-desc').value='';
+  document.getElementById('f-assignee').value='';
+  document.getElementById('f-date').value='';
+  document.getElementById('f-roadmap').checked=false;
+  document.getElementById('f-pri').value='Medium';
+  populateSectionSelect(sectionId);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openEdit(itemId){
+  let item=items.find(i=>i.id===itemId);
+  if(!item)return;
+  editingId=itemId;
+  document.getElementById('modal-title').textContent='Edit item';
+  document.getElementById('f-title').value=item.title||'';
+  document.getElementById('f-desc').value=item.desc||'';
+  document.getElementById('f-assignee').value=item.assignee||'';
+  document.getElementById('f-date').value=item.date||'';
+  document.getElementById('f-roadmap').checked=!!item.roadmap;
+  document.getElementById('f-pri').value=item.priority||'Medium';
+  populateSectionSelect(item.section);
+  let colSel=document.getElementById('f-col');
+  for(let opt of colSel.options){if(opt.value===item.col){opt.selected=true;break;}}
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function populateSectionSelect(selectedId){
+  let sel=document.getElementById('f-section');
+  sel.innerHTML='';
+  for(let leaf of ALL_LEAVES){
+    let opt=document.createElement('option');
+    opt.value=leaf.id;opt.textContent=leaf.path.join(' › ');
+    if(leaf.id===selectedId)opt.selected=true;
+    sel.appendChild(opt);
+  }
+  updateColSelect();
+  sel.addEventListener('change',updateColSelect);
+}
+
+function updateColSelect(){
+  let secId=document.getElementById('f-section').value;
+  let leaf=ALL_LEAVES.find(l=>l.id===secId);
+  let cols=leaf?getColumns(leaf.colType):COL_TYPES.standard;
+  let sel=document.getElementById('f-col');
+  let prev=sel.value;
+  sel.innerHTML='';
+  for(let c of cols){
+    let opt=document.createElement('option');
+    opt.value=c;opt.textContent=c;
+    if(c===prev)opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
+
+function saveItem(){
+  let title=document.getElementById('f-title').value.trim();
+  if(!title){showToast('Title required');return;}
+  let section=document.getElementById('f-section').value;
+  let col=document.getElementById('f-col').value;
+  let priority=document.getElementById('f-pri').value;
+  let assignee=document.getElementById('f-assignee').value.trim();
+  let date=document.getElementById('f-date').value;
+  let roadmap=document.getElementById('f-roadmap').checked;
+  let desc=document.getElementById('f-desc').value.trim();
+  if(editingId){
+    let item=items.find(i=>i.id===editingId);
+    if(item){
+      let wasDone=item.col==='Done';
+      Object.assign(item,{title,section,col,priority,assignee,date,roadmap,desc});
+      if(col==='Done'&&!wasDone){item.doneInVer=activeVerId;}
+      if(col!=='Done'){delete item.doneInVer;}
+    }
+  } else {
+    let item={id:'i'+Date.now(),title,desc,section,col,priority,assignee,date,roadmap,created:Date.now()};
+    if(col==='Done'){item.doneInVer=activeVerId;}
+    items.push(item);
+  }
+  saveData();closeModal();renderSidebar();renderContent(selectedNode);
+  showToast(editingId?'Item updated':'Item added');
+}
+
+function markDone(itemId){
+  let item=items.find(i=>i.id===itemId);if(!item)return;
+  item.col='Done';item.doneInVer=activeVerId;
+  let ver=versions.find(v=>v.id===activeVerId);
+  saveData();renderSidebar();renderContent(selectedNode);
+  showToast('Moved to Done — added to '+(ver?ver.name:'active version'));
+}
+
+function moveItem(itemId,dir){
+  let item=items.find(i=>i.id===itemId);if(!item)return;
+  let leaf=ALL_LEAVES.find(l=>l.id===item.section);if(!leaf)return;
+  let cols=getColumns(leaf.colType);
+  let idx=cols.indexOf(item.col);
+  let newIdx=idx+dir;
+  if(newIdx<0||newIdx>=cols.length)return;
+  item.col=cols[newIdx];
+  if(item.col==='Done'){item.doneInVer=activeVerId;}else{delete item.doneInVer;}
+  saveData();renderSidebar();renderContent(selectedNode);
+}
+
+function deleteItem(itemId){
+  if(!confirm('Delete this item?'))return;
+  items=items.filter(i=>i.id!==itemId);
+  saveData();renderSidebar();renderContent(selectedNode);showToast('Item deleted');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+function openVerModal(){document.getElementById('ver-name-inp').value='';document.getElementById('ver-modal-overlay').classList.add('open');}
+function closeVerModal(){document.getElementById('ver-modal-overlay').classList.remove('open');}
+
+function saveVersion(){
+  let name=document.getElementById('ver-name-inp').value.trim();
+  if(!name){showToast('Name required');return;}
+  let id='v'+Date.now();
+  versions.push({id,name,created:Date.now()});
+  activeVerId=id;
+  saveData();closeVerModal();renderSidebar();renderContent(selectedNode);
+  showToast('Version "'+name+'" created and set active');
+}
+
+function setActiveVer(id){
+  activeVerId=id;saveData();renderSidebar();renderContent(selectedNode);
+  let v=versions.find(x=>x.id===id);showToast((v?v.name:'Version')+' is now active');
+}
+
+function expandAll(){
+  function setOpen(nodes){for(let n of nodes){openNodes[n.id]=true;if(n.children)setOpen(n.children);}}
+  setOpen(TREE);saveData();renderSidebar();
+}
+function collapseAll(){openNodes={};saveData();renderSidebar();}
+
+function doSearch(q){
+  if(!q){renderSidebar();return;}
+  q=q.toLowerCase();
+  let matched=items.filter(i=>i.title.toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.assignee||'').toLowerCase().includes(q));
+  let sectionIds=new Set(matched.map(i=>i.section));
+  function openParents(nodes,target){
+    for(let n of nodes){if(n.id===target)return true;if(n.children){if(openParents(n.children,target)){openNodes[n.id]=true;return true;}}}
+    return false;
+  }
+  for(let sid of sectionIds){openParents(TREE,sid);}
+  renderSidebar();
+  if(sectionIds.size>0){let first=[...sectionIds][0];selectNode(first);}
+}
+
+function showToast(msg){
+  let t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVerModal();}});
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+document.getElementById('ver-modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('ver-modal-overlay'))closeVerModal();});
+document.getElementById('f-section').addEventListener('change',updateColSelect);
+</script>
+</body>
+</html>
