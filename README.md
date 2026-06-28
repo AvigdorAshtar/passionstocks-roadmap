@@ -24,7 +24,7 @@ This mirrors how a PM thinks about it: **what exists today** (Done items), **wha
 
 Just open `index.html` in any browser. No server needed for solo use.
 
-Password: `PassionStocks2026` (change this in `index.html` — search for `const PASS`)
+Password: `***` (change this in `index.html` — search for `const PASS`)
 
 ## Hosting it live (so the team can access it)
 
