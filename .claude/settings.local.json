@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/avigdorashtar/ps-app-ui -type f -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" | head -50)",
+      "Read(//Users/avigdorashtar/ps-app-ui/**)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

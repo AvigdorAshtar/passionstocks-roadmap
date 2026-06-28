@@ -110,7 +110,7 @@ input,select,textarea,button{font-family:inherit}
 <div id="gate">
   <div class="gate-box">
     <div class="gate-logo">PassionStocks</div>
-    <div class="gate-sub">Product roadmap — team access</div>
+    <div class="gate-sub">Product Versions & Roadmap— team access</div>
     <div class="pw-wrap">
       <input type="password" id="pw-input" placeholder="Enter password" />
       <button class="pw-toggle" onclick="togglePw()">show</button>
@@ -1521,8 +1521,6 @@ function nvExpandAll(){
 }
 
 function nvCollapseAll(){nvGroupOpen={};renderNextVerFeed();}
-
-function nvDoSearch(q){nvSearchQuery=q;renderNextVerFeed();}
 
 function closeNextVerFeed(){
   if(selectedNode==='nv:feed'){
